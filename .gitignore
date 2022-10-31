@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,java,c++,c,cmake,linux,visualstudiocode,venv
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,java,c++,c,cmake,linux,visualstudiocode,venv
 
+#bin file
+/bin
+
 ### C ###
 # Prerequisites
 *.d
