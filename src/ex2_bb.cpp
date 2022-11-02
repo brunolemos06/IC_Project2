@@ -26,14 +26,6 @@ int main(int argc, char** argv )
         return -1;
     }
 
-    Mat image2;
-    image2 = imread( argv[2], 1 );
-
-    if ( !image2.data )
-    {
-        printf("No image data2 \n");
-        return -1;
-    }
 
     Mat image3(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
 
@@ -50,8 +42,6 @@ int main(int argc, char** argv )
 
     //write the image to the second file
     imwrite(argv[2], image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
 
     waitKey(0);
 
