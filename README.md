@@ -7,14 +7,17 @@
 | Tiago Marques | 98459 | 33.3(3)%   |
 | João Viegas | 98372  | 33.3(3)%   |
 
-## How to compile
+## How to clean and compile
 make clean
-
-make <ex$> -> $ número do exercício
+make
 
 ## How to run
 
-- Exercício 1
-./bin/ex1
+## Exercício 1
+../bin/ex1 <inputfile> <outfile>
 
-...
+## Exercício 2
+a)                 ../bin/ex2 -a <inputfile> <outfile>
+b)
+    Horizontally : ../bin/ex2 -ba <inputfile> <outfile>
+    Vertically   : ../bin/ex2 -bb <inputfile> <outfile>
