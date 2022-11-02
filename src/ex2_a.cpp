@@ -4,6 +4,19 @@
 #include <stdio.h>
 using namespace std; // std dont need
 int main(){
-    cout << "Hello World!" << endl;
-    cout << "Hello oi!" << endl;
+    // Read image and put in black and white
+    cv::Mat image = cv::imread("../Images/airplane.ppm", 0);
+    // Check if image is loaded
+    if(!image.data){
+        cerr << "Image not loaded" << endl;
+        return -1;
+    }
+    // Create window
+    cv::namedWindow("Display window", cv::WINDOW_AUTOSIZE);
+    // Show image
+    cv::imshow("Display window", image);
+    // Wait for key press
+    cv::waitKey(0);
+    return 0;
+
 }
