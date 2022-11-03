@@ -13,7 +13,7 @@ int main(int argc, char** argv )
 {
     if ( argc != 3 )
     {
-        printf("usage: DisplayImage.out <Image_Path> <Image_Path>\n");
+        printf("usage: DisplayImage.out <Image_Path> <Image_Path>");
         return -1;
     }
 
@@ -22,20 +22,13 @@ int main(int argc, char** argv )
 
     if ( !image.data )
     {
-        printf("No image data \n");
-        return -1;
-    }
-
-    Mat image2;
-    image2 = imread( argv[2], 1 );
-
-    if ( !image2.data )
-    {
-        printf("No image data2 \n");
+        printf("No image data ");
         return -1;
     }
 
     Mat image3(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
+
+    //make a copy of the image by copying each pixel
 
     for(int i = 0; i < image.rows; i++)
     {
@@ -47,10 +40,8 @@ int main(int argc, char** argv )
         }
     }
 
-    //write the image to the second file
+    //create a new image file and write the image to it
     imwrite(argv[2], image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
 
     waitKey(0);
 
