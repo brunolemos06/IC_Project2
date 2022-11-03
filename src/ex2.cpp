@@ -263,7 +263,6 @@ int main(int argc, char** argv){
         const char* type;
         try{
             type = argv[4];
-            
         }catch(exception e){
             print();
             return -1;
