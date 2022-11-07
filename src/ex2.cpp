@@ -105,15 +105,15 @@ int ex2_c(string InputFile, string OutputFileName,int degrees){
         return -1;
     }
 
-    
-    Mat image3(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
-
+    Mat image3(image.cols, image.rows, CV_8UC3, Scalar(0,0,0));
     //rotate by the number of degrees passed in
+    
     if(degrees == 90)
     {
-        for(int i = 0; i < image.rows; i++)
+
+        for(int i = 0; i < image.cols; i++)
         {
-            for(int j = 0; j < image.cols; j++)
+            for(int j = 0; j < image.rows; j++)
             {
                 //rotate the image 90 degrees
                 image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(j,image.cols - i - 1)[0];
@@ -124,6 +124,7 @@ int ex2_c(string InputFile, string OutputFileName,int degrees){
     }
     else if(degrees == 180)
     {
+        image3 = Mat(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
         for(int i = 0; i < image.rows; i++)
         {
             for(int j = 0; j < image.cols; j++)
@@ -137,9 +138,9 @@ int ex2_c(string InputFile, string OutputFileName,int degrees){
     }
     else if(degrees == 270)
     {
-        for(int i = 0; i < image.rows; i++)
+        for(int i = 0; i < image.cols; i++)
         {
-            for(int j = 0; j < image.cols; j++)
+            for(int j = 0; j < image.rows; j++)
             {
                 //rotate the image 270 degrees
                 image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(image.rows - j - 1,i)[0];
@@ -156,6 +157,12 @@ int ex2_c(string InputFile, string OutputFileName,int degrees){
 
     //write image into a new file with the name of the second file passed in
     imwrite(OutputFileName, image3);
+    namedWindow("Display Image", WINDOW_AUTOSIZE );
+    imshow("Display Image", image3);
+
+    waitKey(0);
+
+    return 0;
 }
 
 int ex2_d(string InputFile, string OutputFileName, const char* type){
@@ -249,8 +256,8 @@ int main(int argc, char** argv){
         cout << "Processing ex2 c)\nInputFile: " + InputFileName + "\nOutputFile: " + OutputFileName << endl;
         int degrees;
         try{
-            degrees = atoi(argv[3]);
-        }catch(exception e){
+            degrees = atoi(argv[4]);
+        }catch(exception const & e){
             print();
             return -1;
         }
@@ -263,12 +270,15 @@ int main(int argc, char** argv){
         const char* type;
         try{
             type = argv[4];
-        }catch(exception e){
+        }catch(exception const & e){
             print();
             return -1;
         }
     
-        ex2_d(InputFileName,OutputFileName,type);
+        if (-1 == ex2_d(InputFileName,OutputFileName,type)){
+            cout << "Erro !! "<< endl;
+            return -1;
+        }
         cout << "Done !!" << endl;
     }
     else{
