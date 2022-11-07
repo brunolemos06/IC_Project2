@@ -257,7 +257,7 @@ int main(int argc, char** argv){
         int degrees;
         try{
             degrees = atoi(argv[4]);
-        }catch(exception e){
+        }catch(exception const & e){
             print();
             return -1;
         }
@@ -270,12 +270,15 @@ int main(int argc, char** argv){
         const char* type;
         try{
             type = argv[4];
-        }catch(exception e){
+        }catch(exception const & e){
             print();
             return -1;
         }
     
-        ex2_d(InputFileName,OutputFileName,type);
+        if (-1 == ex2_d(InputFileName,OutputFileName,type)){
+            cout << "Erro !! "<< endl;
+            return -1;
+        }
         cout << "Done !!" << endl;
     }
     else{
