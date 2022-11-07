@@ -36,7 +36,7 @@ class golomb{
                 return -(((count*m) + decimal)/2);
             }
             
-            return (((count*m) + decimal)/2)+1; 
+            return (((count*m) + decimal)-1)/2; 
         }
 
         //encode decimal to golomb code string
@@ -45,7 +45,7 @@ class golomb{
             if(n <= 0){
                 n = -2*n;
             }else{
-                n = 2*n - 1;
+                n = 2*n + 1;
             }
             //calculate unary part
             string unary = calculate_unary(n);
