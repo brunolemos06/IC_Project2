@@ -2,27 +2,55 @@
 #define COLOMB_H
 
 #include <iostream>
+#include <map>
+#include <bitset>
 #include <stdio.h>
 #include <stdlib.h>
-#include <bitset>
+#include <bits/stdc++.h>
 
 using namespace std;
 
 class golomb{
     private:
         int m;
+        int power_of_2;
+        map<string, int> decode_bin;
+
     
     public:
         golomb(int m){
             this->m = m;
+            this->power_of_2 = (ceil(log2(m)) == floor(log2(m)));
+            map<string, int> table;
+            if(!this->power_of_2){
+                int b = ceil(log2(m));
+                for(int i=0; i<(pow(2,b)-m); i++){
+                    //create bin string with b-1 bits
+                    string bin = bitset<32>(i).to_string();
+                    bin = bin.substr(8-b+1, b-1);
+                    table[bin] = i;
+                }
+                //code remaining values of r by coding the number r+(2^b - m) with b bits
+                for(int i=(pow(2,b)-m); i<m; i++){
+                    int n = i + (pow(2,b) - m);
+                    //create bin string with b bits
+                    string bin = bitset<32>(n).to_string();
+                    bin = bin.substr(8-b, b);
+                    table[bin] = i;
+                }
+            }else{
+                map<string, int> table;
+                //create bin string with b bits
+            }
+            this->decode_bin = table;
         }
 
         //decode binary string to decimal
         int decode_string(string bits){
-            //count numbers of 0s until first 1
+            //count numbers of 1s until first 0
             int count = 0;
             for(int i = 0; i < bits.length(); i++){
-                if(bits[i] == '0'){
+                if(bits[i] == '1'){
                     count++;
                 }else{
                     break;
@@ -61,12 +89,12 @@ class golomb{
             int f = n/m;
             //create unary string
             string unary = "";
-            //write 0 f times
+            //write 1 f times
             for(int i = 0; i < f; i++){
-                unary += "0";
+                unary += "1";
             }
-            //add separator aka "1"
-            unary += "1";
+            //add separator aka "0"
+            unary += "0";
             return unary;
         }
 
@@ -74,46 +102,30 @@ class golomb{
         string calculate_binary(int n){
             //calculate decimal part
             int r = n%m;
-            //create to bin string
-            string bin = "";
-            //write 0 r times
-            for(int i = 0; i < r; i++){
-                bin += "0";
+            //create binary string
+            string binary;
+            if(!this->power_of_2){
+                //calculate b
+                int b = ceil(log2(m));
+                //if r is less than 2^b - m, code r with b-1 bits
+                if(r < (pow(2,b) - m)){
+                    //create bin string with b-1 bits
+                    binary = bitset<32>(r).to_string();
+                    binary = binary.substr(8-b+1, b-1);
+                //else code r+(2^b - m) with b bits
+                }else{
+                    //create bin string with b bits
+                    binary = bitset<32>(r+(pow(2,b) - m)).to_string();
+                    binary = binary.substr(8-b, b);
+                }
+            }else{
+                //calculate b
+                int b = log2(m);
+                binary = bitset<32>(r).to_string();
+                binary = binary.substr(8-b, b);
             }
-            //add separator aka "1"
-            bin += "1";
+            return binary;
         }
-
-        string findTwoscomplement(string str){
-            int n = str.length();
-            // Traverse the string to get first '1' from
-            // the last of string
-            int i;
-            for (i = n-1 ; i >= 0 ; i--)
-                if (str[i] == '1')
-                    break;
-        
-            // If there exists no '1' concatenate 1 at the
-            // starting of string
-            if (i == -1)
-                return '1' + str;
-        
-            // Continue traversal after the position of
-            // first '1'
-            for (int k = i-1 ; k >= 0; k--)
-            {
-                //Just flip the values
-                if (str[k] == '1')
-                    str[k] = '0';
-                else
-                    str[k] = '1';
-            }
-        
-            // return the modified string
-            return str;
-        }
-
-        
 };
 
 #endif
