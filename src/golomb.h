@@ -13,7 +13,6 @@ using namespace std;
 class golomb{
     private:
         int m;
-        int power_of_2;
         map<string, int> decode_bin;
         map<int, string> encode_bin;
 
@@ -21,15 +20,15 @@ class golomb{
     public:
         golomb(int m){
             this->m = m;
-            this->power_of_2 = (ceil(log2(m)) == floor(log2(m)));
             map<string, int> decode_table;
             map<int, string> encode_table;
             int b = ceil(log2(m));
-            if(!this->power_of_2){
+            if(!(ceil(log2(m)) == floor(log2(m)))){
+                cout << "NOT power of 2" << endl;
                 for(int i=0; i<(pow(2,b)-m); i++){
                     //create bin string with b-1 bits
                     string bin;
-                    copy_n(bitset<32>(i).to_string().end()-b, b, back_inserter(bin));
+                    copy_n(bitset<32>(i).to_string().end()-b+1, b-1, back_inserter(bin));
                     decode_table[bin] = i;
                     encode_table[i] = bin;
                 }
@@ -90,7 +89,7 @@ class golomb{
         //encode decimal to golomb code string
         string encode_number(int n){
             //map n<=0 to positive even numbers and n>0 to positive odd numbers
-            cout << "\tORIGINAL: " << n << endl;
+            //cout << "\tORIGINAL: " << n << endl;
             if(n <= 0){
                 n = -2*n;
             }else{
