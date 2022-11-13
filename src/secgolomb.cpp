@@ -6,19 +6,15 @@ using namespace std;
 
 int main(int argc, char** argv ){
     if(argc != 3){
-        cout << "Usage: ./secgolomb <i> <m>" << endl;
+        cout << "Usage: ./secgolomb <toencode file> <output file>" << endl;
         return -1;
     }
-    int i = atoi(argv[2]);
-    int m = atoi(argv[1]);
+    int i = 0;
+    int m = 0;
+
     secgolomb secgolomb(i,m);
-    if(secgolomb.isPowerOfTwo(m)){
-        cout << "m is power of 2" << endl;
-        cout << secgolomb.calculate_secgolomb(i,m) << endl;
-    }else{
-        cout << "m is not power of 2" << endl;
-        cout << secgolomb.calculate_secgolomb2(i,m) << endl;
-    }
-    // cout << secgolomb.decimal_to_binary(5,6)<< endl;
+    
+    cout << secgolomb.encode(37000,4)<< endl;
+    
     return 0;
 }

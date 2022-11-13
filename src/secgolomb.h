@@ -39,7 +39,14 @@ class secgolomb{
             }
         }
 
-        
+        string encode(int i,int m){
+            if(isPowerOfTwo(m)){
+                return calculate_secgolomb(i,m);
+            }else{
+                return calculate_secgolomb2(i,m);
+            }
+        }
+
         //method to transform a decimal number to binary with a specific number of bits
         string decimal_to_binary(int n, int bits){
             string binary = bitset<32>(n).to_string();
@@ -47,7 +54,7 @@ class secgolomb{
         }
 
         string calculate_secgolomb(int i, int m){
-            string result = calculate_unary(calculate_q(i,m)) + calculate_binary(calculate_r(i,m));
+            string result = calculate_unary(calculate_q(i,m))+calculate_binary(calculate_r(i,m));
             return result;
         }
         
@@ -92,8 +99,9 @@ class secgolomb{
 
         //represent r as binary code
         string calculate_binary(int r){
-            string binary = bitset<32>(r).to_string();
-            return binary.substr(binary.length()-log2(m));
+            //calculate the binary representation of r with 2 bits
+            string binary = decimal_to_binary(r,2);
+            return binary;
         }
         
 };
