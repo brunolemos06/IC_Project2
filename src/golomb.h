@@ -1,5 +1,5 @@
-#ifndef COLOMB_H
-#define COLOMB_H
+#ifndef GOLOMB_H
+#define GOLOMB_H
 
 #include <iostream>
 #include <map>
@@ -145,7 +145,7 @@ class golomb{
                 cout << "DECODED: " << result << endl;
                 cout << "LEFT: " << bits << endl;
                 //append result to string
-                decoded += to_string(result) + ", ";
+                decoded += to_string(result) + ",";
             }
             return decoded;
         }
