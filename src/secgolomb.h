@@ -140,56 +140,11 @@ class secgolomb{
             }
             return decode_table;
         }
-        
-
-        void decoder(string code, int m){
-            //read the code until the first 0
-            int q = 0;
-            int r = 0;
-            int b = ceil(log2(m));
-            int aux = pow(2,b) - m;
-            int i = 0;
-            int decoded = 0;
-            string r_string;
-            map<string, int> map;
-            for (int i = 0; i < code.length(); i++){
-                //count the firts ones before the first 0
-                if(code[i] == '1'){
-                    q++;
-                }else{
-                    break;
-                }                         
-            }
-            for (int j = q+1; j < code.length()-1; j++)
-            {
-                //store the value of r in a string
-                r_string += code[j];
-            }
-            // cout << "q: " << q << endl;
-            // cout << r_string <<endl;
-            map = calcdecode(m);
-            for(auto it = map.begin(); it != map.end(); ++it){
-            // cout << it->first << " => " << it->second << '\n';
-            //find the value of r_string in the map
-                if(it->first == r_string){
-                    r = it->second;
-                }
-            }
-            // cout << "r: " << r << endl;
-            decoded = (q*m)+r;
-            if(code[code.length()-1]=='1'){
-                decoded = decoded * -1;
-            }
-            cout << "decoder: " << decoded << endl;
-        }
 
         string separator(string code,int m){
             map<string, int> map;
-            map = calcdecode(5);  
+            map = calcdecode(m);  
             string aux;
-            // for(auto it = map.begin(); it != map.end(); ++it){
-            //     cout << it->first << " => " << it->second << '\n';
-            // }
             int max = map.size();
             int findzero = 0;
             string aux2;
@@ -202,6 +157,10 @@ class secgolomb{
             string words;
             string word;
             int inc=0;
+            string decoded;
+            int onepartdecoded;
+            string fulldecoded;
+            string allwords;
             for (int i=0; i<code.length(); i++){
                 while (findzero==0){
                     aux2 += code[i];
@@ -231,15 +190,22 @@ class secgolomb{
                     signal=code[i];
                     if(signal=="1"){
                         // cout<<"sinal: "<<signal<<endl;
+                        signal="-";
                         signalfound=1;
                     }else{
                         // cout<<"sinal: "<<signal<<endl;
+                        signal="";
                         signalfound=1;
                     }
                 }
                 if(binfound==1&&findzero==1&&signalfound==1){
-                    word=aux2+r+signal;
-                    decoder(word,m);
+                    word=signal+aux2+r;
+                    onepartdecoded=aux4+(inc*m);
+                    ostringstream str1;
+                    str1 << onepartdecoded;
+                    string str = str1.str();
+                    fulldecoded=signal+str;
+                    allwords+=fulldecoded;
                     aux2="";
                     aux3="";
                     aux4=0;
@@ -251,7 +217,7 @@ class secgolomb{
                 
             }
             
-            return "moca";
+            return allwords;
         }
             
         
