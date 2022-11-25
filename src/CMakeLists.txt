@@ -33,3 +33,4 @@ target_link_libraries(golomb_code_tests ${OpenCV_LIBS})
 #TESTS OF GOLOMB_CODEC CLASS
 add_executable(golomb_codec_tests golomb_codec_tests.cpp)
 target_link_libraries(golomb_codec_tests ${OpenCV_LIBS})
+target_link_libraries(golomb_codec_tests sndfile)
