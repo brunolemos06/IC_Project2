@@ -31,6 +31,7 @@ class image_codec{
         circular_buffer *cb_decode;
         char buffer;
         int count, num_channels, order;
+        string encoded;
 
         //  Function to write the encoded data to a file
         int write_bin_to_file(const char* fileOut, string encoded){
@@ -101,7 +102,6 @@ class image_codec{
                 //b+(a-c)/2
                 return b+(a-c)/2;
             }else if(mode==7){
-                //(a+b)/2
                 return (a+b)/2;
             }else{
                 //error
@@ -115,144 +115,87 @@ class image_codec{
         }
 
     public:
-        golomb_codec(int n_order) : codec_alg(){ buffer=0; count=0; order=n_order; num_channels=0; cb_encode = cb_init(50); cb_decode = cb_init(50);};
-        golomb_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=2; cb_encode = cb_init(50); cb_decode = cb_init(50);};
+        image_codec(int n_order) : codec_alg(){ buffer=0; count=0; num_channels=3;order=n_order; cb_encode = cb_init(50); cb_decode = cb_init(50);};
+        image_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=3;cb_encode = cb_init(50); cb_decode = cb_init(50);};
+        
+        
 
         int encode_image_file(const char* fileIn, const char* fileOut){
             
             clock_t time_req;                           //for time measurement
             time_req = clock();                         //start time measurement
-
-            //  Open the input file
-            if ( argc != 3 ){
-                printf("usage: ../bin/ex6 <Image_Path> <Image_Path>");
-                return -1;
-            }
+            encoded = "";
+            
+            //  declaare char array to store fileIn
             Mat image;
-            image = imread( argv[1], 1 );
+            image = imread( fileIn , 1 );
             if (!image.data){
                 printf("No image data");
                 return -1;
             }
 
             //  Get the image size
-            int width = image.cols;
-            int height = image.rows;
-            int channels = image.channels();
+            int num_channels = 3;
 
-            for(int i = 0; i < image.rows; i++){
+            int real0;
+            int real1;
+            int real2;
+            int a1, b1, c1, a2, b2, c2, a3, b3, c3;
+            int pred1, pred2, pred3;
+            int value1, value2, value3;
+            codec_alg.change_m_decode(4);
+            // for first line and first column
+            for(int i=0; i<image.cols; i++){
+                int value = image.at<Vec3b>(0,i)[0];
+                encoded += codec_alg.encode_number(value, 0) + '\n';
+                value = image.at<Vec3b>(0,i)[1];
+                encoded += codec_alg.encode_number(value, 0) + '\n';
+                value = image.at<Vec3b>(0,i)[2];
+                encoded += codec_alg.encode_number(value, 0) + '\n';
+            }
+            
+            int soma =0;
+            for(int i = 1; i < 2; i++){
                 for(int j = 0; j < image.cols; j++){
-                    Vec3b bgrPixel = image.at<Vec3b>(i,j);
-                    printf("image3.at<Vec3b>(%d,%d) = (%d,%d,%d)\n", i, j,bgrPixel[0], bgrPixel[1], bgrPixel[2]);
-                }
-            }       
+                    soma += image.at<Vec3b>(i,j)[0] + image.at<Vec3b>(i,j)[1] + image.at<Vec3b>(i,j)[2];
+                    if (j == 0){
+                        for(int k=0; k<num_channels; k++){
+                            encoded += codec_alg.encode_number(image.at<Vec3b>(i,j)[k], 0);
+                        }
+                    }else{
+                        real0 = image.at<Vec3b>(i,j)[0];
+                        real1 = image.at<Vec3b>(i,j)[1];
+                        real2 = image.at<Vec3b>(i,j)[2];
 
+                        a1 = image.at<Vec3b>(i,j-1)[0];
+                        b1 = image.at<Vec3b>(i-1,j)[0];
+                        c1 = image.at<Vec3b>(i-1,j-1)[0];
+                        a2 = image.at<Vec3b>(i,j-1)[1];
+                        b2 = image.at<Vec3b>(i-1,j)[1];
+                        c2 = image.at<Vec3b>(i-1,j-1)[1];
+                        a3 = image.at<Vec3b>(i,j-1)[2];
+                        b3 = image.at<Vec3b>(i-1,j)[2];
+                        c3 = image.at<Vec3b>(i-1,j-1)[2];
+
+
+                        pred1 = (a1+b1)/2;
+                        value1 = real0 - pred1;
+                        pred2 = (a2+b2)/2;
+                        value2 = real1 - pred2;
+                        pred3 = (a3+b3)/2;
+                        value3 = real2 - pred3;
+
+                        encoded += codec_alg.encode_number(value1,0);
+                        encoded += codec_alg.encode_number(value2,0);
+                        encoded += codec_alg.encode_number(value3,0);
+                    }
+                }
+                // codec_alg.change_m_decode(calc_m(soma/(image.cols*3)));
+            }
+
+            write_bin_to_file(fileOut, encoded);
             time_req = clock() - time_req;
             cout << "Execution time: " << (float)time_req/CLOCKS_PER_SEC << " seconds\n" << endl;
-            return 0;
-        }
-
-        int decode_to_image(const char* fileIn, const char* fileOut){
-            //start clock
-            clock_t time_req;
-            time_req = clock();
-
-            //read encoded file
-            string encoded = read_bin_from_file(fileIn);
-            
-            uint32_t *decoded_value;                        //variable to store decoded value
-            decoded_value = (uint32_t*)malloc(sizeof(uint32_t));    //initialize decoded_value
-            
-            uint32_t *unmapped_value;                       //variable to store mapped value
-            unmapped_value = (uint32_t*)malloc(sizeof(uint32_t));   //initialize unmapped_value
-
-            vector<short> decoded_error_samples;            //vector to store decoded error samples
-
-            //decode encoded file
-            //decode first order*num_channels samples
-            for(uint32_t i=0; i<order*num_channels; i++){
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
-
-                //unmap decoded error value
-                if(*decoded_value % 2 == 0){
-                    //-(result/2)
-                    *unmapped_value = -((*decoded_value)/2);
-                }else{
-                    //(result+1)/2
-                    *unmapped_value = (*decoded_value-1)/2;
-                }
-                //push unmapped error value to vector
-                decoded_error_samples.push_back(*unmapped_value);
-
-            }
-
-            //decode rest of samples
-            uint32_t i = 0;
-            while(encoded.size() > 0){
-                //string decode_string(string bits, uint32_t *result_n, int mapping_on)
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
-                //if encoded is empty, break
-                if(encoded.size() == 0){
-                    break;
-                }
-
-                //push decoded value to cb
-                cb_push(cb_decode, *decoded_value);
-                if(cb_is_full(cb_decode)){
-                    uint32_t cb_avg=1;
-                    //call average function
-                    cb_average(cb_decode, &cb_avg);
-                    //cout << "\tAVERAGE: " << cb_avg << endl;
-                    codec_alg.change_m_decode(calc_m(cb_avg));
-                    //cout << "\tNEW M: " << codec_alg.get_m_decode()<< endl;
-                    //cb_print(cb_decode);
-                    cb_clear(cb_decode);
-                }
-
-               //unmap decoded error value
-                if(*decoded_value % 2 == 0){
-                    //-(result/2)
-                    *unmapped_value = -((*decoded_value)/2);
-                }else{
-                    //(result+1)/2
-                    *unmapped_value = (*decoded_value-1)/2;
-                }
-                //push unmapped error value to vector
-                decoded_error_samples.push_back(*unmapped_value);
-                //print iteration
-                if(i%1000000 == 0){
-                    cout << "Iteration: " << ++i << endl;
-                }
-            }
-
-            vector<short> decoded_samples;                          //vector to store original samples
-            decoded_samples.resize(samples_size);   //resize samples vector to fit all samples
-
-            //after unmapping all values, calculate original samples 
-            //reconstruct original value of first order*num_channels samples
-            for(uint32_t i=0; i<order*num_channels; i++){
-                decoded_samples[i] = decoded_error_samples[i];
-            }
-            //reconstruct original value of rest of samples
-            for(uint32_t i=order*num_channels; i<decoded_samples.size(); i++){
-                decoded_samples[i] = decoded_error_samples[i] + calculate_prediction(order, decoded_samples[i-num_channels], decoded_samples[i-(2*num_channels)], decoded_samples[i-(3*num_channels)]);
-            }
-
-            //write all samples to file
-            ofstream file;
-            file.open("RECONSTRUCTED_SAMPLES.txt");
-            for (uint32_t i = 0; i < decoded_samples.size(); i++){
-                file << decoded_samples[i] << endl;
-            }
-            file.close();
-
-            //write decoded samples to wav file
-            cout << "Writing to file: " << fileOut << endl;
-            write_wav_file(fileOut, decoded_samples);
-
-            //print execution time
-            time_req = clock() - time_req;
-            cout << "Execution time: " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
             return 0;
         }
 
