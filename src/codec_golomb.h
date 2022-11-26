@@ -178,49 +178,37 @@ class golomb_codec{
 
             string encoded = "";
 
-            //for initial order*num_channels samples
-            //calculate error values, map them, calculate initial m and encode them
-            uint32_t med = 0;
-            uint32_t tmp_val = 0;
+            //CALCULATE ERROR VALUES
+            //add first (order) samples each for channel
             for(uint32_t i=0; i<order*num_channels; i++){
                 error_values[i] = all_samples[i];
-                if(all_samples[i] < 0){
-                    tmp_val = (all_samples[i] * -2);
-                }else{
-                    tmp_val = (all_samples[i] * 2) + 1;
-                }
-                med += tmp_val;
-                encoded += codec_alg.encode_number(tmp_val, 0);
-
             }
-            codec_alg.change_m_encode(med/(order*num_channels));
-            codec_alg.change_m_decode(med/(order*num_channels));
-            //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
-
-            //for the rest of the samples
-            //calculate error values, map them and encode them        
+            //calculate errors         
             for(uint32_t i=order*num_channels; i<all_samples.size(); i++){
                 //0 2 4 6 ... left channel and 1 3 5 7 ... right channel in case DUAL CHANNEL
                 error_values[i] = (all_samples[i] - calculate_prediction(order, all_samples[i-num_channels], all_samples[i-(2*num_channels)], all_samples[i-(3*num_channels)]));
-                if(error_values[i] < 0){
-                    tmp_val = (error_values[i] * -2);
-                } else {
-                    tmp_val = (error_values[i] * 2) + 1;
-                }
+            }
 
-                encoded += codec_alg.encode_number(tmp_val, 0);
-                
-                cb_push(cb_encode, tmp_val);
-                if(cb_is_full(cb_encode)){
-                    uint32_t cb_avg=1;
-                    cb_average(cb_encode, &cb_avg);
-                    codec_alg.change_m_encode(calc_m(cb_avg));
-                    //cout << "\tNEW M: " << codec_alg.get_m_encode()<< endl;
-                    cb_clear(cb_encode);
+            //MAP ERROR VALUES
+            for(uint32_t i=0; i<error_values.size(); i++){
+                if(error_values[i] < 0){
+                    mapped_samples[i] = (error_values[i] * -2);
+                } else {
+                    mapped_samples[i] = (error_values[i] * 2) + 1;
                 }
                 //print original and mapped values
                 //cout << i <<"   ERROR: " << error_values[i] << " MAPPED: " << mapped_samples[i] << endl;
             }
+
+            //calculate initial m
+            //med of first order*num_channels samples 
+            uint32_t med=0;
+            for(uint32_t i=0; i<order*num_channels; i++){
+                med += mapped_samples[i];
+            }
+            codec_alg.change_m_encode(med/(order*num_channels));
+            codec_alg.change_m_decode(med/(order*num_channels));
+            //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
 
             //int error = 0;
             //print samples , error values and mapped error values
@@ -237,6 +225,28 @@ class golomb_codec{
             //     }
             // }
             // cout << "\033[1;31mERRORS: " << error << "\033[0m"<<endl;
+
+            //encode mapped error values
+            for(uint32_t i=0; i<order*num_channels; i++){
+                encoded += codec_alg.encode_number(mapped_samples[i], 0); // 
+            }
+            for(uint32_t i=order*num_channels; i<mapped_samples.size(); i++){    //mapped_samples.size()
+                encoded += codec_alg.encode_number(mapped_samples[i], 0);
+                
+                cb_push(cb_encode, mapped_samples[i]);
+                if(cb_is_full(cb_encode)){
+                    uint32_t cb_avg=1;
+                    //call average function
+                    cb_average(cb_encode, &cb_avg);
+                    //cout << "\tAVERAGE: " << cb_avg << endl;
+                    codec_alg.change_m_encode(calc_m(cb_avg));
+                    //cout << "\tNEW M: " << codec_alg.get_m_encode()<< endl;
+                    //cb_print(cb_encode);
+                    cb_clear(cb_encode);
+                }
+            }
+
+
 
             cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
             cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
@@ -286,10 +296,10 @@ class golomb_codec{
             }
 
             //decode rest of samples
-            uint32_t i = 0;
+            uint32_t i = 6;
             while(encoded.size() > 0){
                 //string decode_string(string bits, uint32_t *result_n, int mapping_on)
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
+                encoded = codec_alg.decode_string(encoded, decoded_value, 0); //111101010101010101 -> encode -> 101010101010101 -> decoded_vlue = 111 == 7
                 //if encoded is empty, break
                 if(encoded.size() == 0){
                     break;
@@ -319,9 +329,10 @@ class golomb_codec{
                 //push unmapped error value to vector
                 decoded_error_samples.push_back(*unmapped_value);
                 //print iteration
-                if(i%1000 == 0){
-                    cout << "Iteration: " << ++i << endl;
+                if(i%10000 == 0){
+                    cout << "Iteration: " << i << endl;
                 }
+                i++;
             }
 
             vector<short> decoded_samples;                          //vector to store original samples

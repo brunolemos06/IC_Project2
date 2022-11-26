@@ -11,8 +11,6 @@ int main(int argc, char** argv ){
         return -1;
     }
 
-    golomb_codec g();
-
     if(argc == 3){
         cout << "Encoding file " << argv[1] << " to file " << argv[2] << endl;
         cout << "Using default parameters: dual channel, order 3" << endl;
