@@ -265,10 +265,7 @@ class golomb_codec{
             uint32_t *unmapped_value;                       //variable to store mapped value
             unmapped_value = (uint32_t*)malloc(sizeof(uint32_t));   //initialize unmapped_value
 
-            //vector<short> decoded_error_samples;            //vector to store decoded error samples
-
-            vector<short> decoded_samples;                          //vector to store original samples
-            decoded_samples.resize(samples_size);   //resize samples vector to fit all samples
+            vector<short> decoded_error_samples;            //vector to store decoded error samples
 
             //decode encoded file
             //decode first order*num_channels samples
@@ -277,13 +274,15 @@ class golomb_codec{
 
                 //unmap decoded error value
                 if(*decoded_value % 2 == 0){
+                    //-(result/2)
                     *unmapped_value = -((*decoded_value)/2);
                 }else{
+                    //(result+1)/2
                     *unmapped_value = (*decoded_value-1)/2;
                 }
                 //push unmapped error value to vector
-                //decoded_error_samples.push_back(*unmapped_value);
-                decoded_samples[i] = *unmapped_value;
+                decoded_error_samples.push_back(*unmapped_value);
+
             }
 
             //decode rest of samples
@@ -317,18 +316,26 @@ class golomb_codec{
                     //(result+1)/2
                     *unmapped_value = (*decoded_value-1)/2;
                 }
-
-                decoded_samples[i] = *unmapped_value + calculate_prediction(order, decoded_samples[i-num_channels], decoded_samples[i-(2*num_channels)], decoded_samples[i-(3*num_channels)]);
+                //push unmapped error value to vector
+                decoded_error_samples.push_back(*unmapped_value);
                 //print iteration
                 if(i%1000 == 0){
                     cout << "Iteration: " << ++i << endl;
                 }
             }
 
+            vector<short> decoded_samples;                          //vector to store original samples
+            decoded_samples.resize(samples_size);   //resize samples vector to fit all samples
+
+            //after unmapping all values, calculate original samples 
+            //reconstruct original value of first order*num_channels samples
+            for(uint32_t i=0; i<order*num_channels; i++){
+                decoded_samples[i] = decoded_error_samples[i];
+            }
             //reconstruct original value of rest of samples
-            // for(uint32_t i=order*num_channels; i<decoded_samples.size(); i++){
-            //     decoded_samples[i] = decoded_error_samples[i] + calculate_prediction(order, decoded_samples[i-num_channels], decoded_samples[i-(2*num_channels)], decoded_samples[i-(3*num_channels)]);
-            // }
+            for(uint32_t i=order*num_channels; i<decoded_samples.size(); i++){
+                decoded_samples[i] = decoded_error_samples[i] + calculate_prediction(order, decoded_samples[i-num_channels], decoded_samples[i-(2*num_channels)], decoded_samples[i-(3*num_channels)]);
+            }
 
             //write all samples to file
             ofstream file;
