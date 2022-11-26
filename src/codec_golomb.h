@@ -17,9 +17,7 @@ constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading/writing frame
 
 uint32_t samples_size = 0;
 size_t frames=0;
-int format=0, channels=0, samplerate=0;
-
-vector<short> og;
+int format=0, samplerate=0;
 
 class golomb_codec{
     private:
@@ -31,57 +29,13 @@ class golomb_codec{
 
         int write_wav_file(const char* fileOut, vector<short> &samples){
             //create output file
-            SndfileHandle sfhOut { fileOut, SFM_WRITE, format, channels, samplerate }; 
-            sfhOut.writef(samples.data(), frames);
+            SndfileHandle sfhOut(fileOut, SFM_WRITE, format, num_channels, samplerate);
+            
+            //print samples
+            cout << "!Samples: "<< samples.size() << endl;
+            uint32_t tmp = sfhOut.write(samples.data(), samples.size());
+            cout << "Samples written: " << tmp << endl;
             return 0;
-        }
-
-        vector<short> read_wav_file(const char* fileIn){
-            SndfileHandle sfhIn { fileIn };
-            if(sfhIn.error()) {
-		        cerr << "Error: invalid input file\n";
-		        return {};
-            }
-
-            if((sfhIn.format() & SF_FORMAT_TYPEMASK) != SF_FORMAT_WAV) {
-		        cerr << "Error: file is not in WAV format\n";
-		        return {};
-            }
-
-	        if((sfhIn.format() & SF_FORMAT_SUBMASK) != SF_FORMAT_PCM_16) {
-		        cerr << "Error: file is not in PCM_16 format\n";
-		        return {};
-	        }
-
-            size_t nFrames;
-            vector<short> samples(FRAMES_BUFFER_SIZE * sfhIn.channels());
-
-            //details to be used in write_wav_file
-            frames = { static_cast<size_t>(sfhIn.frames()) };
-            samplerate = { static_cast<int>(sfhIn.samplerate()) };
-            format = { static_cast<int>(sfhIn.format()) };
-            channels = { static_cast<int>(sfhIn.channels()) };
-
-            //vector to store all samples
-            vector<short> all_samples;
-            //read all file and store in all_samples
-            while((nFrames = sfhIn.readf(samples.data(), FRAMES_BUFFER_SIZE))) {
-                samples.resize(nFrames * sfhIn.channels());
-                samples_size += samples.size();
-                //deep copy samples to all_samples
-                all_samples.insert(all_samples.end(), samples.begin(), samples.end());
-                samples.clear();
-            }
-
-            og = all_samples;
-
-            //write all samples to file
-            ofstream file;
-            file.open("ORIGINAL_SAMPLES.txt");
-            for (int i = 0; i < all_samples.size(); i++){
-                file << all_samples[i] << endl;
-            }
-            return all_samples;
         }
         
         int write_bin_to_file(const char* fileOut, string encoded){
@@ -145,37 +99,75 @@ class golomb_codec{
             return -1;
         }
 
-        int reverse_prediction(int order, int prev_1, int prev_2, int prev_3){
-            if(order == 3){
-                //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
-                return (3*prev_1) + (3*prev_2) - prev_3;
-            }else if(order==2){
-                //xˆ(2)n = 2xn−1 − xn−2
-                return (2*prev_1) + prev_2;
-            }else if(order==1){
-                //xˆ(1)n = xn−1
-                return prev_1;
-            }
-            return -1;
-        }
-
         uint32_t calc_m(double avg){
             double alfa = avg / (avg + 1);
             return ceil(-1/log2(alfa));
         }
 
     public:
-        golomb_codec(int n_channel, int n_order) : codec_alg(){ buffer=0; count=0; order=n_order; num_channels=n_channel; cb_encode = cb_init(5); cb_decode = cb_init(5);};
-        golomb_codec(int n_channel) : codec_alg() {buffer=0; count=0; order=3; num_channels=n_channel; cb_encode = cb_init(5); cb_decode = cb_init(5);};
-        golomb_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=2; cb_encode = cb_init(5); cb_decode = cb_init(5);};
+        golomb_codec(int n_order) : codec_alg(){ buffer=0; count=0; order=n_order; num_channels=0; cb_encode = cb_init(50); cb_decode = cb_init(50);};
+        golomb_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=2; cb_encode = cb_init(50); cb_decode = cb_init(50);};
 
         int encode_wav_file(const char* fileIn, const char* fileOut){
             clock_t time_req;                           //for time measurement
             time_req = clock();                         //start time measurement
 
-            vector<short> samples;
-            samples.resize(samples_size);               //resize vector to fit all samples
-            samples = read_wav_file(fileIn);            //read all samples from file
+            vector<short> all_samples;  //vector to store all samples
+
+            SndfileHandle sfhIn { fileIn };
+            if(sfhIn.error()) {
+		        cerr << "Error: invalid input file\n";
+		        return {};
+            }
+
+            if((sfhIn.format() & SF_FORMAT_TYPEMASK) != SF_FORMAT_WAV) {
+		        cerr << "Error: file is not in WAV format\n";
+		        return {};
+            }
+
+	        if((sfhIn.format() & SF_FORMAT_SUBMASK) != SF_FORMAT_PCM_16) {
+		        cerr << "Error: file is not in PCM_16 format\n";
+		        return {};
+	        }
+
+            size_t nFrames;
+            vector<short> tmp_samples(FRAMES_BUFFER_SIZE * sfhIn.channels());
+
+            //details to be used in write_wav_file
+            frames = { static_cast<size_t>(sfhIn.frames()) };
+            samplerate = { static_cast<int>(sfhIn.samplerate()) };
+            format = { static_cast<int>(sfhIn.format()) };
+            num_channels = sfhIn.channels();
+
+            while((nFrames = sfhIn.readf(tmp_samples.data(), FRAMES_BUFFER_SIZE))) {
+                tmp_samples.resize(nFrames * sfhIn.channels());
+                samples_size += tmp_samples.size();
+
+                //add samples to all_samples
+                for( auto &sample : tmp_samples){
+                    all_samples.push_back(sample);
+                }
+                //all_samples.insert(all_samples.end(), samples.begin(), samples.end());
+                
+                //clear samples
+                //samples.clear();
+                //samples.shrink_to_fit();
+                
+                vector<short>().swap(tmp_samples);
+                //resize samples
+                tmp_samples.resize(FRAMES_BUFFER_SIZE * sfhIn.channels());
+
+            }
+
+            cout << "SIZE: " << samples_size << endl;
+
+            ofstream file;
+            file.open("ORIGINAL_SAMPLES.txt");
+            for (uint32_t i = 0; i < all_samples.size(); i++){
+                file << all_samples[i] << endl;
+            }
+            file.close();
+
             
             vector<short> error_values;                 //error values
             error_values.resize(samples_size);          //resize vector to fit all error values
@@ -186,28 +178,23 @@ class golomb_codec{
 
             string encoded = "";
 
+            //CALCULATE ERROR VALUES
             //add first (order) samples each for channel
             for(uint32_t i=0; i<order*num_channels; i++){
-                error_values[i] = samples[i];
+                error_values[i] = all_samples[i];
+            }
+            //calculate errors         
+            for(uint32_t i=order*num_channels; i<all_samples.size(); i++){
+                //0 2 4 6 ... left channel and 1 3 5 7 ... right channel in case DUAL CHANNEL
+                error_values[i] = (all_samples[i] - calculate_prediction(order, all_samples[i-num_channels], all_samples[i-(2*num_channels)], all_samples[i-(3*num_channels)]));
             }
 
-            //calculate errors         
-            for(uint32_t i=order*num_channels; i<samples.size(); i++){   //samples.size()
-                //0 2 4 6 ... left channel and 1 3 5 7 ... right channel in case DUAL CHANNEL
-                int predict = calculate_prediction(order, samples[i-num_channels], samples[i-(2*num_channels)], samples[i-(3*num_channels)]);
-                //cout << "RESULT.:( "<< i <<" ) " << samples[i] << " - "<< predict <<" = " << samples[i] - predict<<endl;
-                error_values[i] = (samples[i] - predict);
-            }
-            
-            //map error values
-            uint32_t tmp; 
+            //MAP ERROR VALUES
             for(uint32_t i=0; i<error_values.size(); i++){
                 if(error_values[i] < 0){
-                    tmp = (error_values[i] * -2);
-                    mapped_samples[i] = tmp;
+                    mapped_samples[i] = (error_values[i] * -2);
                 } else {
-                    tmp = (error_values[i] * 2) + 1;
-                    mapped_samples[i] = tmp;
+                    mapped_samples[i] = (error_values[i] * 2) + 1;
                 }
                 //print original and mapped values
                 //cout << i <<"   ERROR: " << error_values[i] << " MAPPED: " << mapped_samples[i] << endl;
@@ -245,6 +232,7 @@ class golomb_codec{
             }
             for(uint32_t i=order*num_channels; i<mapped_samples.size(); i++){    //mapped_samples.size()
                 encoded += codec_alg.encode_number(mapped_samples[i], 0);
+                
                 cb_push(cb_encode, mapped_samples[i]);
                 if(cb_is_full(cb_encode)){
                     uint32_t cb_avg=1;
@@ -254,11 +242,12 @@ class golomb_codec{
                     codec_alg.change_m_encode(calc_m(cb_avg));
                     //cout << "\tNEW M: " << codec_alg.get_m_encode()<< endl;
                     //cb_print(cb_encode);
+                    cb_clear(cb_encode);
                 }
             }
 
-            cout << "Encoded size in bytes: " << encoded.size()/8 << endl;
-            cout << "Encoded size in Mbytes: " << encoded.size()/8/1024/1024 << endl;
+            cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
+            cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
 
 
             //write encoded string to file
@@ -305,6 +294,7 @@ class golomb_codec{
             }
 
             //decode rest of samples
+            uint32_t i = 0;
             while(encoded.size() > 0){
                 //string decode_string(string bits, uint32_t *result_n, int mapping_on)
                 encoded = codec_alg.decode_string(encoded, decoded_value, 0);
@@ -323,6 +313,7 @@ class golomb_codec{
                     codec_alg.change_m_decode(calc_m(cb_avg));
                     //cout << "\tNEW M: " << codec_alg.get_m_decode()<< endl;
                     //cb_print(cb_decode);
+                    cb_clear(cb_decode);
                 }
 
                //unmap decoded error value
@@ -335,7 +326,10 @@ class golomb_codec{
                 }
                 //push unmapped error value to vector
                 decoded_error_samples.push_back(*unmapped_value);
-
+                //print iteration
+                if(i%1000000 == 0){
+                    cout << "Iteration: " << ++i << endl;
+                }
             }
 
             vector<short> decoded_samples;                          //vector to store original samples
