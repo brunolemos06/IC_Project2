@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include "codec_image.h"
 
 using namespace cv;
 using namespace std;
@@ -13,43 +14,14 @@ using namespace std;
 
 int main(int argc, char** argv )
 {
+    //  init codec_image
+    image_codec first();
+
+    image_codec codec(3);
     if ( argc != 3 ){
-        printf("usage: ../bin/ex6 <Image_Path> <Image_Path>");
+        printf("usage: wrong\n");
         return -1;
     }
+    codec.encode_image_file(argv[1], argv[2]);
 
-    Mat image;
-    image = imread( argv[1], 1 );
-
-    if ( !image.data )
-    {
-        printf("No image data ");
-        return -1;
-    }
-
-    Mat image3(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
-
-    //make a copy of the image by copying each pixel
-
-    for(int i = 0; i < image.rows; i++)
-    {
-        for(int j = 0; j < image.cols; j++)
-        {
-            // print image3.at<Vec3b>(i,j) to see the values of each pixel
-            Vec3b bgrPixel = image.at<Vec3b>(i,j);
-            printf("image3.at<Vec3b>(%d,%d) = (%d,%d,%d)\n", i, j,bgrPixel[0], bgrPixel[1], bgrPixel[2]);
-            
-            
-            image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(i,j)[0];
-            image3.at<Vec3b>(i,j)[1] = image.at<Vec3b>(i,j)[1];
-            image3.at<Vec3b>(i,j)[2] = image.at<Vec3b>(i,j)[2];
-        }
-    }
-
-    //create a new image file and write the image to it
-    imwrite(argv[2], image3);
-
-    waitKey(0);
-
-    return 0;
 }
