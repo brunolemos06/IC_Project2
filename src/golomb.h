@@ -15,48 +15,48 @@ using namespace std;
 class golomb{
     private:
         uint32_t m_encode, m_decode;
-        map<string, uint32_t> decode_bin;
+        //map<string, uint32_t> decode_bin;
 
-        void init_decode_map(){
-            map<string, uint32_t> decode_table;
-            int b = ceil(log2(m_decode));
-            if(b==0) b=1;
-            if(!(ceil(log2(m_decode)) == floor(log2(m_decode)))){
-                //cout << "NOT power of 2" << endl;
-                for(uint32_t i=0; i<(pow(2,b)-m_decode); i++){
-                    //create bin string with b-1 bits
-                    string bin;
-                    copy_n(bitset<32>(i).to_string().end()-b+1, b-1, back_inserter(bin));
-                    decode_table[bin] = i;
-                }
-                //code remaining values of r by coding the number r+(2^b - m) with b bits
-                for(uint32_t i=(pow(2,b)-m_decode); i<m_decode; i++){
-                    uint32_t n = i + (pow(2,b) - m_decode);
-                    //create bin string with b bits
-                    string bin;
-                    copy_n(bitset<32>(n).to_string().end()-b, b, back_inserter(bin));
-                    decode_table[bin] = i;
-                }
-            }else{
-                // 0 equals string with b 0's
-                string bin(b, '0');
-                decode_table[bin] = 0; 
-                //create bin string with b bits
-                for(uint32_t i=1; i<m_decode; i++){
-                    string bin;
-                    //create bin string and remove leading zeros
-                    bin = bitset<32>(i).to_string();
-                    //leave only b bits
-                    bin.erase(0, bin.size()-b);
-                    decode_table[bin] = i;
-                }
-            }
-            //print tables
-            this->decode_bin = decode_table;
-            // cout << "DECODE TABLE FOR "<< this->m_decode << endl;
-            // for (auto const& x : this->decode_bin)
-            //     cout << x.first << " " << x.second << endl;
-        }
+        // void init_decode_map(){
+        //     map<string, uint32_t> decode_table;
+        //     int b = ceil(log2(m_decode));
+        //     if(b==0) b=1;
+        //     if(!(ceil(log2(m_decode)) == floor(log2(m_decode)))){
+        //         //cout << "NOT power of 2" << endl;
+        //         for(uint32_t i=0; i<(pow(2,b)-m_decode); i++){
+        //             //create bin string with b-1 bits
+        //             string bin;
+        //             copy_n(bitset<32>(i).to_string().end()-b+1, b-1, back_inserter(bin));
+        //             decode_table[bin] = i;
+        //         }
+        //         //code remaining values of r by coding the number r+(2^b - m) with b bits
+        //         for(uint32_t i=(pow(2,b)-m_decode); i<m_decode; i++){
+        //             uint32_t n = i + (pow(2,b) - m_decode);
+        //             //create bin string with b bits
+        //             string bin;
+        //             copy_n(bitset<32>(n).to_string().end()-b, b, back_inserter(bin));
+        //             decode_table[bin] = i;
+        //         }
+        //     }else{
+        //         // 0 equals string with b 0's
+        //         string bin(b, '0');
+        //         decode_table[bin] = 0; 
+        //         //create bin string with b bits
+        //         for(uint32_t i=1; i<m_decode; i++){
+        //             string bin;
+        //             //create bin string and remove leading zeros
+        //             bin = bitset<32>(i).to_string();
+        //             //leave only b bits
+        //             bin.erase(0, bin.size()-b);
+        //             decode_table[bin] = i;
+        //         }
+        //     }
+        //     //print tables
+        //     this->decode_bin = decode_table;
+        //     cout << "DECODE TABLE FOR "<< this->m_decode << endl;
+        //     for (auto const& x : this->decode_bin)
+        //         cout << x.first << " " << x.second << endl;
+        // }
 
         //receives natural number and returns the binary string of unary part
         string encode_unary(uint32_t n){
@@ -111,17 +111,17 @@ class golomb{
         golomb(uint32_t m){
             this->m_encode = m;
             this->m_decode = m;
-            this->init_decode_map();
+            //this->init_decode_map();
         }
 
         golomb(){
             this->m_encode = 1000;
             this->m_decode = 1000;
-            this->init_decode_map();
+            //this->init_decode_map();
         }
 
         //decode binary string to decimal
-        string decode_string(string bits, uint32_t *result_n, int mapping_on){
+        string decode_string(string bits, long *result_n, int mapping_on){
             //cout << "\nENCODED STRING: " << bits << endl;
             //create string to store decoded values
             string decoded;
@@ -151,65 +151,69 @@ class golomb{
                 return decoded;
             }
 
-            string key = "";
-
             //if m_decode is power of 2
-            uint32_t b = ceil(log2(m_decode));
-            if(ceil(log2(m_decode)) == floor(log2(m_decode))){
-                //cout << "POWER OF 2" << endl;
-                //read b bits
-                key = bits.substr(0, b);
-                //remove b bits from bits
-                bits.erase(0, b);
-            }else{ //if m_decode is not power of 2 key can have b-1 or b bits
-                //cout << "NOT POWER OF 2" << endl;
-                //read b-1 bits
-                if(b==0){ b=1; }
-                key = bits.substr(0, b);
-                //check if key not in map
-                if(decode_bin.find(key) == decode_bin.end()){
-                    //cout << "KEY NOT IN MAP" << endl;
-                    //read b-1 bits
-                    key = bits.substr(0, b-1);
-                    //remove b-1 bits from bits
-                    bits.erase(0, b-1);
-                }else{
-                    //cout << "KEY IN MAP" << endl;
-                    //remove b bits from bits
-                    bits.erase(0, b);
-                }
+            uint32_t b = floor(log2(m_decode));
+            // if(ceil(log2(m_decode)) == floor(log2(m_decode))){
+            //     //cout << "POWER OF 2" << endl;
+            //     //read b bits
+            //     key = bits.substr(0, b);
+            //     //remove b bits from bits
+            //     bits.erase(0, b);
+            // }else{ //if m_decode is not power of 2 key can have b-1 or b bits
+            //     //cout << "NOT POWER OF 2" << endl;
+            //     //read b-1 bits
+            //     if(b==0){ b=1; }
+            //     key = bits.substr(0, b);
+            //     //check if key not in map
+            //     if(decode_bin.find(key) == decode_bin.end()){
+            //         //cout << "KEY NOT IN MAP" << endl;
+            //         //read b-1 bits
+            //         key = bits.substr(0, b-1);
+            //         //remove b-1 bits from bits
+            //         bits.erase(0, b-1);
+            //     }else{
+            //         //cout << "KEY IN MAP" << endl;
+            //         //remove b bits from bits
+            //         bits.erase(0, b);
+            //     }
+            // }
+
+            string key = bits.substr(0, b);                                //read b bits
+            uint32_t decimal = (uint32_t) bitset<32>(key).to_ulong();   //transform key to uint32_t
+            if(decimal< ( pow(2,(b+1)) - m_decode)){                //if decimal is less than 2^(b+1) - m then r' = r
+                bits.erase(0, b);                                   //remove b bits from bits
+            }else{
+                key = bits.substr(0, b+1);                          //read b+1 bits
+                decimal = (uint32_t) bitset<32>(key).to_ulong();    //r'
+                decimal = decimal - pow(2,(b+1)) + m_decode;        //r = r' - 2^(b+1) + m
+                bits.erase(0, b+1);
             }
 
-            //cout << "\tKEY: " << key << endl;
-            uint32_t decimal = decode_bin[key];
-            //cout << "\tDECIMAL: " << decimal << endl;
+            //uint32_t decimal = decode_bin[key];
             //sum unary and binary
             uint32_t result = count*m_decode + decimal;
-            //cout << "\tRESULT: " << result << endl;
 
-            //assign result to result
+            *result_n = (long) result;
             if(mapping_on){
                 if(result % 2 == 0){
-                    result=  -(result/2);
+                    *result_n = (long) (*result_n/-2);
                 }else{
-                    result=  (result-1)/2;
+                    *result_n = (long) ((*result_n-1)/2);
                 }
             }
-
-            //cout << "DECODED: " << result << endl;
-            //cout << "LEFT: " << bits << endl;
-            //assign result to result
-            *result_n = (uint32_t) result; 
+ 
+            //cout << "UNARY: " << count*m_decode << " + " << "BINARY: " << decimal << " = " << result << " -> UNMAPPED: "<< *result_n << endl;
+            //cout << "REMAINING BITS: " << bits << endl;
             return bits;
         }
 
         //encode decimal to golomb code string
-        string encode_number(uint32_t n, int mapping_on){
+        string encode_number(int n, int mapping_on){
             //cout << "\tORIGINAL: " << n << endl;
             //map n<=0 to positive even numbers and n>0 to positive odd numbers
-            int mapped;
+            uint32_t mapped;
             if(mapping_on){
-                if(n <= 0){
+                if(n < 0){
                     mapped = -2*n;
                 }else{
                     mapped = (2*n) +1;
@@ -243,7 +247,7 @@ class golomb{
 
         void change_m_decode(uint32_t m){
             this->m_decode = m;
-            this->init_decode_map();
+            //this->init_decode_map();
         }
 };
 

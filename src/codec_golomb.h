@@ -208,7 +208,7 @@ class golomb_codec{
             }
             codec_alg.change_m_encode(med/(order*num_channels));
             codec_alg.change_m_decode(med/(order*num_channels));
-            //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
+            cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
 
             //int error = 0;
             //print samples , error values and mapped error values
@@ -269,11 +269,11 @@ class golomb_codec{
             //read encoded file
             string encoded = read_bin_from_file(fileIn);
             
-            uint32_t *decoded_value;                        //variable to store decoded value
-            decoded_value = (uint32_t*)malloc(sizeof(uint32_t));    //initialize decoded_value
+            long *decoded_value;                        //variable to store decoded value
+            decoded_value = (long*)malloc(sizeof(long));    //initialize decoded_value
             
-            uint32_t *unmapped_value;                       //variable to store mapped value
-            unmapped_value = (uint32_t*)malloc(sizeof(uint32_t));   //initialize unmapped_value
+            long *unmapped_value;                       //variable to store mapped value
+            unmapped_value = (long*)malloc(sizeof(long));   //initialize unmapped_value
 
             vector<short> decoded_error_samples;            //vector to store decoded error samples
 
@@ -299,7 +299,7 @@ class golomb_codec{
             uint32_t i = 6;
             while(encoded.size() > 0){
                 //string decode_string(string bits, uint32_t *result_n, int mapping_on)
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0); //111101010101010101 -> encode -> 101010101010101 -> decoded_vlue = 111 == 7
+                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
                 //if encoded is empty, break
                 if(encoded.size() == 0){
                     break;
