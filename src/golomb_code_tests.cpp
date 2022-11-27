@@ -27,8 +27,10 @@ int main(int argc, char** argv ){
 
     //decode string to int and print
     long *decoded = (long*) malloc(sizeof(long));
-    while(encoded.length()>0){
-        encoded = test.decode_string(encoded, decoded, 1);
+    char *encoded_c = &encoded[0];
+    while(*encoded_c != '\0'){
+        encoded_c = test.decode_string(encoded_c, decoded, 1);
+        cout << *decoded << endl;
     }
 
     return 0;

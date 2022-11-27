@@ -9,7 +9,6 @@
 #include <sndfile.hh>
 
 #include "golomb.h"
-#include "circularBuffer.h"
 
 using namespace std;
 
@@ -22,17 +21,15 @@ int format=0, samplerate=0;
 class golomb_codec{
     private:
         golomb codec_alg;
-        circular_buffer *cb_encode;
-        circular_buffer *cb_decode;
-        char buffer;
-        int count, num_channels, order;
+        char buffer = 0;
+        int count=0, num_channels=0;
+        int x, y, order;
 
         int write_wav_file(const char* fileOut, vector<short> &samples){
             //create output file
             SndfileHandle sfhOut(fileOut, SFM_WRITE, format, num_channels, samplerate);
             
             //print samples
-            cout << "!Samples: "<< samples.size() << endl;
             uint32_t tmp = sfhOut.write(samples.data(), samples.size());
             cout << "Samples written: " << tmp << endl;
             return 0;
@@ -85,28 +82,13 @@ class golomb_codec{
             return encoded;
         }
 
-        int calculate_prediction(int order, int prev_1, int prev_2, int prev_3){
-            if(order == 3){
-                //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
-                return ((3*prev_1) - (3*prev_2) + prev_3);
-            }else if(order==2){
-                //xˆ(2)n = 2xn−1 − xn−2
-                return ((2*prev_1) - prev_2);
-            }else if(order==1){
-                //xˆ(1)n = xn−1
-                return  prev_1;
-            }
-            return -1;
-        }
-
         uint32_t calc_m(double avg){
             double alfa = avg / (avg + 1);
             return ceil(-1/log2(alfa));
         }
 
     public:
-        golomb_codec(int n_order) : codec_alg(){ buffer=0; count=0; order=n_order; num_channels=0; cb_encode = cb_init(50); cb_decode = cb_init(50);};
-        golomb_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=2; cb_encode = cb_init(50); cb_decode = cb_init(50);};
+        golomb_codec(int n_order, int x_in, int y_in): codec_alg() { order = n_order; x = x_in; y = y_in; };
 
         int encode_wav_file(const char* fileIn, const char* fileOut){
             clock_t time_req;                           //for time measurement
@@ -159,57 +141,67 @@ class golomb_codec{
 
             }
 
-            cout << "SIZE: " << samples_size << endl;
-
-            ofstream file;
-            file.open("ORIGINAL_SAMPLES.txt");
-            for (uint32_t i = 0; i < all_samples.size(); i++){
-                file << all_samples[i] << endl;
-            }
-            file.close();
-
-            
-            vector<short> error_values;                 //error values
-            error_values.resize(samples_size);          //resize vector to fit all error values
-
+            //cout << "SIZE: " << samples_size << endl;
 
             vector<uint32_t> mapped_samples;            //mapp predicted values
             mapped_samples.resize(samples_size);        //resize vector to fit all mapped error values
 
             string encoded = "";
 
-            //CALCULATE ERROR VALUES
-            //add first (order) samples each for channel
+            //FRIST ORDER*NUM_CHANNELS SAMPLES
+            uint32_t med = 0;
             for(uint32_t i=0; i<order*num_channels; i++){
-                error_values[i] = all_samples[i];
-            }
-            //calculate errors         
-            for(uint32_t i=order*num_channels; i<all_samples.size(); i++){
-                //0 2 4 6 ... left channel and 1 3 5 7 ... right channel in case DUAL CHANNEL
-                error_values[i] = (all_samples[i] - calculate_prediction(order, all_samples[i-num_channels], all_samples[i-(2*num_channels)], all_samples[i-(3*num_channels)]));
-            }
-
-            //MAP ERROR VALUES
-            for(uint32_t i=0; i<error_values.size(); i++){
-                if(error_values[i] < 0){
-                    mapped_samples[i] = (error_values[i] * -2);
+                //calculate errors  aka error_values[i] = all_samples[i] - 0              
+                //map errors
+                if(all_samples[i] < 0){
+                    mapped_samples[i] = (all_samples[i] * -2);
                 } else {
-                    mapped_samples[i] = (error_values[i] * 2) + 1;
+                    mapped_samples[i] = (all_samples[i] * 2) + 1;
                 }
-                //print original and mapped values
-                //cout << i <<"   ERROR: " << error_values[i] << " MAPPED: " << mapped_samples[i] << endl;
-            }
-
-            //calculate initial m
-            //med of first order*num_channels samples 
-            uint32_t med=0;
-            for(uint32_t i=0; i<order*num_channels; i++){
                 med += mapped_samples[i];
             }
+            //calculate initial m
             codec_alg.change_m_encode(med/(order*num_channels));
             codec_alg.change_m_decode(med/(order*num_channels));
-            cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
+            //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
+            //encode first order*channels samples
+            for(uint32_t i=0; i<order*num_channels; i++){
+                encoded += codec_alg.encode_number(mapped_samples[i], 0);
+            }
 
+            //FOR THE REST OF THE SAMPLES       
+            long tmp_error = 0;  
+            for(uint32_t i=order*num_channels; i<all_samples.size(); i++){
+                //0 2 4 6 ... left channel and 1 3 5 7 ... right channel in case DUAL CHANNEL
+                if(order == 3){
+                    //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
+                    tmp_error = all_samples[i] - ( (3*all_samples[i-num_channels]) - ( 3*all_samples[i-(2*num_channels)]) + (all_samples[i-(3*num_channels)]) );
+                }else if(order == 2){
+                    //xˆ(2)n = 2xn−1 − xn−2
+                    tmp_error = all_samples[i] - ( (2*all_samples[i-num_channels]) - all_samples[i-(2*num_channels)] ); 
+                }
+
+                //map tmp_error
+                if(tmp_error < 0){
+                    mapped_samples[i] = (tmp_error * -2);
+                } else {
+                    mapped_samples[i] = (tmp_error * 2) + 1;
+                }
+                //encode mapped error
+                encoded += codec_alg.encode_number(mapped_samples[i], 0);
+
+                //update m to encode
+                if(i % x == 0){ //every x samples  
+                    med = 0;
+                    for(uint32_t j=i - y; j<i; j++){ //calculate average of last y samples
+                        med += mapped_samples[j];
+                    }
+                    codec_alg.change_m_encode(calc_m(med/x));
+                }
+
+            }
+
+            //ERRORS CHECK
             //int error = 0;
             //print samples , error values and mapped error values
             // for(uint32_t i=0; i<mapped_samples.size(); i++){
@@ -225,28 +217,6 @@ class golomb_codec{
             //     }
             // }
             // cout << "\033[1;31mERRORS: " << error << "\033[0m"<<endl;
-
-            //encode mapped error values
-            for(uint32_t i=0; i<order*num_channels; i++){
-                encoded += codec_alg.encode_number(mapped_samples[i], 0); // 
-            }
-            for(uint32_t i=order*num_channels; i<mapped_samples.size(); i++){    //mapped_samples.size()
-                encoded += codec_alg.encode_number(mapped_samples[i], 0);
-                
-                cb_push(cb_encode, mapped_samples[i]);
-                if(cb_is_full(cb_encode)){
-                    uint32_t cb_avg=1;
-                    //call average function
-                    cb_average(cb_encode, &cb_avg);
-                    //cout << "\tAVERAGE: " << cb_avg << endl;
-                    codec_alg.change_m_encode(calc_m(cb_avg));
-                    //cout << "\tNEW M: " << codec_alg.get_m_encode()<< endl;
-                    //cb_print(cb_encode);
-                    cb_clear(cb_encode);
-                }
-            }
-
-
 
             cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
             cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
@@ -268,93 +238,69 @@ class golomb_codec{
 
             //read encoded file
             string encoded = read_bin_from_file(fileIn);
-            
-            long *decoded_value;                        //variable to store decoded value
-            decoded_value = (long*)malloc(sizeof(long));    //initialize decoded_value
-            
-            long *unmapped_value;                       //variable to store mapped value
-            unmapped_value = (long*)malloc(sizeof(long));   //initialize unmapped_value
+            //pointer to encoded string
+            char *p = &encoded[0];
 
-            vector<short> decoded_error_samples;            //vector to store decoded error samples
+            //print encoded size in bytes
+            cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
+            cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
 
-            //decode encoded file
-            //decode first order*num_channels samples
-            for(uint32_t i=0; i<order*num_channels; i++){
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
+            long * tmp_val = (long*)malloc(sizeof(long));    //pointer to store decoded number
 
-                //unmap decoded error value
-                if(*decoded_value % 2 == 0){
-                    //-(result/2)
-                    *unmapped_value = -((*decoded_value)/2);
-                }else{
-                    //(result+1)/2
-                    *unmapped_value = (*decoded_value-1)/2;
+            vector<uint32_t> mapped_samples;                //vector to store mapped samples
+            vector<short> decoded_samples;                  //vector to store decoded samples
+
+            uint32_t i=0;
+            //FIRST ORDER*CHANNELS SAMPLES
+            for(; i<order*num_channels; i++){
+                //decode first order*channels samples
+                p = codec_alg.decode_string(p, tmp_val, 0);
+                mapped_samples.push_back(*tmp_val);
+                //unmap decoded value
+                if(*tmp_val % 2 == 0){
+                    *tmp_val = ( (*tmp_val) / (-2));
+                } else {
+                    *tmp_val = ((*tmp_val - 1) / 2);
                 }
-                //push unmapped error value to vector
-                decoded_error_samples.push_back(*unmapped_value);
-
+                //add unmapped value to decoded_samples
+                decoded_samples.push_back((*tmp_val));
             }
 
             //decode rest of samples
-            uint32_t i = 6;
-            while(encoded.size() > 0){
+            uint32_t med=0;
+            //check if pointer is not at the end of encoded string aka char '\0'
+            while( *p != '\0'){
                 //string decode_string(string bits, uint32_t *result_n, int mapping_on)
-                encoded = codec_alg.decode_string(encoded, decoded_value, 0);
-                //if encoded is empty, break
-                if(encoded.size() == 0){
-                    break;
+                p = codec_alg.decode_string(p, tmp_val, 0);
+                mapped_samples.push_back(*tmp_val);
+                //update m to decode
+                if(i % x == 0){     //if(1){    
+                    med = 0;
+                    for(uint32_t j=i - y; j<i; j++){
+                        med += mapped_samples[j];
+                    }
+                    codec_alg.change_m_decode(calc_m(med/x));
                 }
 
-                //push decoded value to cb
-                cb_push(cb_decode, *decoded_value);
-                if(cb_is_full(cb_decode)){
-                    uint32_t cb_avg=1;
-                    //call average function
-                    cb_average(cb_decode, &cb_avg);
-                    //cout << "\tAVERAGE: " << cb_avg << endl;
-                    codec_alg.change_m_decode(calc_m(cb_avg));
-                    //cout << "\tNEW M: " << codec_alg.get_m_decode()<< endl;
-                    //cb_print(cb_decode);
-                    cb_clear(cb_decode);
+                //unmap decoded value
+                if(*tmp_val % 2 == 0){
+                    *tmp_val = ( (*tmp_val) / (-2));
+                } else {
+                    *tmp_val = ((*tmp_val - 1) / 2);
                 }
-
-               //unmap decoded error value
-                if(*decoded_value % 2 == 0){
-                    //-(result/2)
-                    *unmapped_value = -((*decoded_value)/2);
-                }else{
-                    //(result+1)/2
-                    *unmapped_value = (*decoded_value-1)/2;
-                }
-                //push unmapped error value to vector
-                decoded_error_samples.push_back(*unmapped_value);
-                //print iteration
-                if(i%10000 == 0){
-                    cout << "Iteration: " << i << endl;
+                //add unmapped value to decoded_samples
+                if(order == 3){
+                    //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
+                    decoded_samples.push_back( ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)]) ) );
+                }else if(order == 2){
+                    //xˆ(2)n = 2xn−1 − xn−2
+                    decoded_samples.push_back( ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) ) );
                 }
                 i++;
             }
 
-            vector<short> decoded_samples;                          //vector to store original samples
-            decoded_samples.resize(samples_size);   //resize samples vector to fit all samples
-
-            //after unmapping all values, calculate original samples 
-            //reconstruct original value of first order*num_channels samples
-            for(uint32_t i=0; i<order*num_channels; i++){
-                decoded_samples[i] = decoded_error_samples[i];
-            }
-            //reconstruct original value of rest of samples
-            for(uint32_t i=order*num_channels; i<decoded_samples.size(); i++){
-                decoded_samples[i] = decoded_error_samples[i] + calculate_prediction(order, decoded_samples[i-num_channels], decoded_samples[i-(2*num_channels)], decoded_samples[i-(3*num_channels)]);
-            }
-
-            //write all samples to file
-            ofstream file;
-            file.open("RECONSTRUCTED_SAMPLES.txt");
-            for (uint32_t i = 0; i < decoded_samples.size(); i++){
-                file << decoded_samples[i] << endl;
-            }
-            file.close();
+            //remove last sample
+            decoded_samples.pop_back();
 
             //write decoded samples to wav file
             cout << "Writing to file: " << fileOut << endl;
