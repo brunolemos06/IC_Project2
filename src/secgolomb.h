@@ -16,6 +16,8 @@ class secgolomb{
     private:
         int m;
         int i;
+        char buffer;
+        int count;
     public:
         secgolomb(int i,int m) : m{i}, i{m} {}
         
@@ -23,8 +25,8 @@ class secgolomb{
             int b = ceil(log2(m));        
             int q = abs(i) / m;
             int r = abs(i) -q*m;
-            cout << "q: " << q << endl;
-            cout << "r: " << r << endl;
+            // cout << "q: " << q << endl;
+            // cout << "r: " << r << endl;
             int aux = pow(2,b) - m;
             string array[r+1];
             for(int i = 0; i <= r; i++){
@@ -140,7 +142,7 @@ class secgolomb{
             }
             return decode_table;
         }
-
+        
         string separator(string code,int m){
             map<string, int> map;
             map = calcdecode(m);  
@@ -219,6 +221,29 @@ class secgolomb{
             
             return allwords;
         }
-            
+        void write_bit(char bit, string filename){
+            ofstream file (filename, ios::app);
+            buffer <<= 1;
+                if (bit == '1') {
+                    buffer |= 1;
+                  }
+                count++;
+                if(count == 8) {
+                    file.write(&buffer, 1);
+                    buffer = 0;
+                    count = 0;
+                }
+        }
+        //Function readbit
+        string readbit(string filename){
+            ifstream file (filename, ios::app);
+            char c;
+            //read only the first byte of the file
+            file.read(&c, 1);
+            //convert the byte to binary
+            string binary = bitset<8>(c).to_string();
+            // cout << binary << endl;
+            return binary;
+        }   
         
 };
