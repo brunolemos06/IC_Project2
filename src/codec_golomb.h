@@ -14,22 +14,21 @@ using namespace std;
 
 constexpr size_t FRAMES_BUFFER_SIZE = 65536; // Buffer for reading/writing frames
 
-uint32_t samples_size = 0;
-size_t frames=0;
-int format=0, samplerate=0;
-
 class golomb_codec{
     private:
         golomb codec_alg;
         char buffer = 0;
-        int count=0, num_channels=0;
-        int x, y, order;
+        int count=0, order, lossless, cut_n_bits;
+        uint32_t x, y;
 
-        int write_wav_file(const char* fileOut, vector<short> &samples){
+        int write_wav_file(const char* fileOut, vector<short> &samples, int format, int samplerate, int num_channels){
             //create output file
             SndfileHandle sfhOut(fileOut, SFM_WRITE, format, num_channels, samplerate);
             
-            //print samples
+            if(sfhOut.error()){
+                cerr << "Error: invalid output file\n";
+                return 1;
+            }
             uint32_t tmp = sfhOut.write(samples.data(), samples.size());
             cout << "Samples written: " << tmp << endl;
             return 0;
@@ -83,18 +82,28 @@ class golomb_codec{
         }
 
         uint32_t calc_m(double avg){
+            if (avg == 0) return 1;
             double alfa = avg / (avg + 1);
             return ceil(-1/log2(alfa));
         }
 
     public:
-        golomb_codec(int n_order, int x_in, int y_in): codec_alg() { order = n_order; x = x_in; y = y_in; };
+        golomb_codec(int n_order, int x_in, int y_in, int lossless_on, int cut_bits): codec_alg() { order = n_order; x = x_in; y = y_in; lossless = lossless_on; cut_n_bits = cut_bits; };
+        golomb_codec(){
+            this->codec_alg = golomb();
+            this->order = 3;
+            this->x = 2000;
+            this->y = 1250;
+            this->lossless=1;
+            this->cut_n_bits=0;
+        }
 
         int encode_wav_file(const char* fileIn, const char* fileOut){
             clock_t time_req;                           //for time measurement
             time_req = clock();                         //start time measurement
 
             vector<short> all_samples;  //vector to store all samples
+            uint32_t samples_size = 0;  //number of samples
 
             SndfileHandle sfhIn { fileIn };
             if(sfhIn.error()) {
@@ -115,11 +124,7 @@ class golomb_codec{
             size_t nFrames;
             vector<short> tmp_samples(FRAMES_BUFFER_SIZE * sfhIn.channels());
 
-            //details to be used in write_wav_file
-            frames = { static_cast<size_t>(sfhIn.frames()) };
-            samplerate = { static_cast<int>(sfhIn.samplerate()) };
-            format = { static_cast<int>(sfhIn.format()) };
-            num_channels = sfhIn.channels();
+            int num_channels = sfhIn.channels();
 
             while((nFrames = sfhIn.readf(tmp_samples.data(), FRAMES_BUFFER_SIZE))) {
                 tmp_samples.resize(nFrames * sfhIn.channels());
@@ -127,14 +132,16 @@ class golomb_codec{
 
                 //add samples to all_samples
                 for( auto &sample : tmp_samples){
-                    all_samples.push_back(sample);
+                    if(lossless){
+                        all_samples.push_back(sample);
+                    }
+                    else{
+                        //cut n bits
+                        all_samples.push_back( (sample >> cut_n_bits) );
+                    }
                 }
-                //all_samples.insert(all_samples.end(), samples.begin(), samples.end());
                 
-                //clear samples
-                //samples.clear();
-                //samples.shrink_to_fit();
-                
+                //clear tmp_samples
                 vector<short>().swap(tmp_samples);
                 //resize samples
                 tmp_samples.resize(FRAMES_BUFFER_SIZE * sfhIn.channels());
@@ -145,8 +152,6 @@ class golomb_codec{
 
             vector<uint32_t> mapped_samples;            //mapp predicted values
             mapped_samples.resize(samples_size);        //resize vector to fit all mapped error values
-
-            string encoded = "";
 
             //FRIST ORDER*NUM_CHANNELS SAMPLES
             uint32_t med = 0;
@@ -162,7 +167,47 @@ class golomb_codec{
             }
             //calculate initial m
             codec_alg.change_m_encode(med/(order*num_channels));
-            codec_alg.change_m_decode(med/(order*num_channels));
+
+            //create header: initial m (32 bits), order (2 bits), x (32 bits), y (32 bits), lossless (1 bit), cut_n_bits (4 bits), samplerate (32 bits), format (32 bits), num_channels (3 bits), num_samples (32 bits)
+            
+            //print header values
+            cout << "\nHEADER DATA:" << endl;
+            cout << "Initial m: " << codec_alg.get_m_encode() << endl;
+            cout << "Order: " << order << endl;
+            cout << "X: " << x << endl;
+            cout << "Y: " << y << endl;
+            cout << "Lossless: " << lossless << endl;
+            cout << "Cut n bits: " << cut_n_bits << endl;
+            cout << "Samplerate: " << sfhIn.samplerate() << endl;
+            cout << "Format: " << sfhIn.format() << endl;
+            cout << "Num channels: " << num_channels << endl;
+            cout << "Num samples: " << samples_size << endl;
+
+            string header = "";
+            //initial m to bin string of 32 bits
+            header += bitset<32>(codec_alg.get_m_encode()).to_string();
+            //order to bin string of 2 bits
+            header += bitset<2>(order).to_string();
+            //x to bin string of 32 bits
+            header += bitset<32>(x).to_string();
+            //y to bin string of 32 bits
+            header += bitset<32>(y).to_string();
+            //lossless to bin string of 1 bit
+            header += bitset<1>(lossless).to_string();
+            //cut_n_bits to bin string of 4 bits
+            header += bitset<4>(cut_n_bits).to_string();
+            //samplerate to bin string of 32 bits
+            header += bitset<32>((sfhIn.samplerate())).to_string();
+            //format to bin string of 32 bits
+            header += bitset<32>((sfhIn.format())).to_string();
+            //num_channels to bin string of 3 bits
+            header += bitset<3>(num_channels).to_string();
+            //num_samples to bin string of 32 bits
+            header += bitset<32>(samples_size).to_string();
+
+            //string to store encoded data
+            string encoded = header;
+
             //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
             //encode first order*channels samples
             for(uint32_t i=0; i<order*num_channels; i++){
@@ -218,7 +263,7 @@ class golomb_codec{
             // }
             // cout << "\033[1;31mERRORS: " << error << "\033[0m"<<endl;
 
-            cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
+            cout << "\nEncoded size in bytes: " << (double)encoded.size()/8 << endl;
             cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
 
 
@@ -238,12 +283,55 @@ class golomb_codec{
 
             //read encoded file
             string encoded = read_bin_from_file(fileIn);
-            //pointer to encoded string
-            char *p = &encoded[0];
 
             //print encoded size in bytes
-            cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
+            cout << "\nEncoded size in bytes: " << (double)encoded.size()/8 << endl;
             cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
+
+            //read header to variables: initial m (32 bits), order (2 bits), x (32 bits), y (32 bits), lossless (1 bit), cut_n_bits (4 bits), samplerate (32 bits), format (32 bits), num_channels (3 bits), num_samples (32 bits)
+            string header = encoded.substr(0, 32+2+32+32+1+4+32+32+3+32);
+            //remove header from encoded string
+            encoded = encoded.substr(32+2+32+32+1+4+32+32+3+32);
+
+            //read initial m (32 bits) and convert to uint32_t
+            uint32_t initial_m = bitset<32>(header.substr(0, 32)).to_ulong();
+            this->codec_alg.change_m_decode(initial_m);
+            //read order (2 bits) and convert to int 
+            this->order = (int) bitset<2>(header.substr(32, 2)).to_ulong();
+            //read x (32 bits) and convert to uint32_t
+            this->x = (uint32_t) bitset<32>(header.substr(32+2, 32)).to_ulong();
+            //read y (32 bits) and convert to uint32_t
+            this-> y = (uint32_t) bitset<32>(header.substr(32+2+32, 32)).to_ulong();
+            //read lossless (1 bit) and convert to int
+            this->lossless = (int) bitset<1>(header.substr(32+2+32+32, 1)).to_ulong();
+            //read cut_n_bits (4 bits) and convert to int
+            this->cut_n_bits = (int) bitset<4>(header.substr(32+2+32+32+1, 4)).to_ulong();
+            //read samplerate (32 bits) and convert to static_cast<int>
+            int samplerate = { static_cast<int>(bitset<32>(header.substr(32+2+32+32+1+4, 32)).to_ulong())};
+            //read format (32 bits) and convert to static_cast<int>
+            int format = { static_cast<int>(bitset<32>(header.substr(32+2+32+32+1+4+32, 32)).to_ulong())};
+            //read num_channels (3 bits) and convert to static_cast<int>
+            int num_channels = { static_cast<int>(bitset<3>(header.substr(32+2+32+32+1+4+32+32, 3)).to_ulong())};
+            //read num_samples (32 bits) and convert to uint32_t
+            uint32_t num_samples = (uint32_t) bitset<32>(header.substr(32+2+32+32+1+4+32+32+3, 32)).to_ulong();
+
+            //print header info
+            cout << "\nHEADER DATA:" << endl;
+            cout << "Initial m: " << codec_alg.get_m_decode() << endl;
+            cout << "Order: " << this->order << endl;
+            cout << "X: " << this->x << endl;
+            cout << "Y: " << this->y << endl;
+            cout << "Lossless: " << this->lossless << endl;
+            cout << "Cut n bits: " << this->cut_n_bits << endl;
+            cout << "Samplerate: " << samplerate << endl;
+            cout << "Format: " << format << endl;
+            cout << "Num channels: " << num_channels << endl;
+            cout << "Num samples: " << num_samples << endl;
+
+            //pointer to encoded string
+            char *p = &encoded[0];
+            //pointer to encoded string end
+            char *end = p + encoded.size();
 
             long * tmp_val = (long*)malloc(sizeof(long));    //pointer to store decoded number
 
@@ -263,13 +351,17 @@ class golomb_codec{
                     *tmp_val = ((*tmp_val - 1) / 2);
                 }
                 //add unmapped value to decoded_samples
-                decoded_samples.push_back((*tmp_val));
+                if(lossless){
+                    decoded_samples.push_back(*tmp_val);
+                }else{
+                    decoded_samples.push_back(*tmp_val << cut_n_bits);
+                }
             }
 
             //decode rest of samples
             uint32_t med=0;
             //check if pointer is not at the end of encoded string aka char '\0'
-            while( *p != '\0'){
+            while( *p != '\0' && p < end){
                 //string decode_string(string bits, uint32_t *result_n, int mapping_on)
                 p = codec_alg.decode_string(p, tmp_val, 0);
                 mapped_samples.push_back(*tmp_val);
@@ -289,22 +381,37 @@ class golomb_codec{
                     *tmp_val = ((*tmp_val - 1) / 2);
                 }
                 //add unmapped value to decoded_samples
-                if(order == 3){
-                    //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
-                    decoded_samples.push_back( ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)]) ) );
-                }else if(order == 2){
-                    //xˆ(2)n = 2xn−1 − xn−2
-                    decoded_samples.push_back( ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) ) );
+                if(lossless){
+                    if(order == 3){
+                        //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
+                        decoded_samples.push_back( ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)]) ) );
+                    }else if(order == 2){
+                        //xˆ(2)n = 2xn−1 − xn−2
+                        decoded_samples.push_back( ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) ) );
+                    }
+                }else{
+                    short tmp = ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)]) );
+                    if(order == 3){
+                        //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
+                        decoded_samples.push_back( tmp << cut_n_bits );
+                    }else if(order == 2){
+                        tmp = ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) );
+                        //xˆ(2)n = 2xn−1 − xn−2
+                        decoded_samples.push_back( tmp << cut_n_bits );
+                    }
                 }
                 i++;
             }
 
             //remove last sample
-            decoded_samples.pop_back();
+            //decoded_samples.pop_back();
+
+            //make decoded_samples size equal to num_samples
+            decoded_samples.resize(num_samples);
 
             //write decoded samples to wav file
             cout << "Writing to file: " << fileOut << endl;
-            write_wav_file(fileOut, decoded_samples);
+            write_wav_file(fileOut, decoded_samples, format, samplerate, num_channels);
 
             //print execution time
             time_req = clock() - time_req;
