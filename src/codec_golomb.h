@@ -172,7 +172,7 @@ class golomb_codec{
             
             //print header values
             cout << "\nHEADER DATA:" << endl;
-            cout << "Initial m: " << codec_alg.get_m_encode() << endl;
+            cout << "M: " << codec_alg.get_m_encode() << endl;
             cout << "Order: " << order << endl;
             cout << "X: " << x << endl;
             cout << "Y: " << y << endl;
@@ -208,7 +208,6 @@ class golomb_codec{
             //string to store encoded data
             string encoded = header;
 
-            //cout << "INITIAL M: " << codec_alg.get_m_encode() << endl;
             //encode first order*channels samples
             for(uint32_t i=0; i<order*num_channels; i++){
                 encoded += codec_alg.encode_number(mapped_samples[i], 0);
@@ -317,7 +316,7 @@ class golomb_codec{
 
             //print header info
             cout << "\nHEADER DATA:" << endl;
-            cout << "Initial m: " << codec_alg.get_m_decode() << endl;
+            cout << "M: " << codec_alg.get_m_decode() << endl;
             cout << "Order: " << this->order << endl;
             cout << "X: " << this->x << endl;
             cout << "Y: " << this->y << endl;
@@ -351,11 +350,7 @@ class golomb_codec{
                     *tmp_val = ((*tmp_val - 1) / 2);
                 }
                 //add unmapped value to decoded_samples
-                if(lossless){
-                    decoded_samples.push_back(*tmp_val);
-                }else{
-                    decoded_samples.push_back(*tmp_val << cut_n_bits);
-                }
+                decoded_samples.push_back(*tmp_val);
             }
 
             //decode rest of samples
@@ -366,7 +361,7 @@ class golomb_codec{
                 p = codec_alg.decode_string(p, tmp_val, 0);
                 mapped_samples.push_back(*tmp_val);
                 //update m to decode
-                if(i % x == 0){     //if(1){    
+                if(i % x == 0){
                     med = 0;
                     for(uint32_t j=i - y; j<i; j++){
                         med += mapped_samples[j];
@@ -390,21 +385,23 @@ class golomb_codec{
                         decoded_samples.push_back( ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) ) );
                     }
                 }else{
-                    short tmp = ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)]) );
                     if(order == 3){
                         //xˆ(3)n = 3xn−1 − 3xn−2 + xn−3
-                        decoded_samples.push_back( tmp << cut_n_bits );
+                        decoded_samples.push_back( ( ((short)(*tmp_val)) + ( (3*decoded_samples[i-num_channels]) - ( 3*decoded_samples[i-(2*num_channels)]) + (decoded_samples[i-(3*num_channels)])) ) );
                     }else if(order == 2){
-                        tmp = ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)]) );
                         //xˆ(2)n = 2xn−1 − xn−2
-                        decoded_samples.push_back( tmp << cut_n_bits );
+                        decoded_samples.push_back( ( ((short)(*tmp_val)) + ( (2*decoded_samples[i-num_channels]) - (decoded_samples[i-(2*num_channels)])) ) );
                     }
                 }
                 i++;
             }
 
-            //remove last sample
-            //decoded_samples.pop_back();
+            //uncut decoded samples
+            if(!lossless){
+                for(uint32_t i=0; i<decoded_samples.size(); i++){
+                    decoded_samples[i] = decoded_samples[i] << cut_n_bits;
+                }
+            }
 
             //make decoded_samples size equal to num_samples
             decoded_samples.resize(num_samples);

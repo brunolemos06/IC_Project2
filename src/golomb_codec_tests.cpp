@@ -9,7 +9,7 @@ int main(int argc, char** argv ){
         cerr << "Usage: ./golomb_codec_tests <fileIn.wav> <encoded.txt> <decoded.wav> [-lossy n_bits_to_cut[1,15] (def:lossless)]\n";
         cerr << "                                                                     [-order [2,3] (def:3)]\n";
         cerr << "                                   (update m every x samples) (X>0)  [-x (def:2000)]\n"; 
-        cerr << "                       (calculate medium of y samples) (x > y > 0)  [-y def:1500)]\n";
+        cerr << "                       (calculate medium of y samples) (x >= y > 0)  [-y def:1500)]\n";
         return -1;
     }
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv ){
     for(int n = 1 ; n < argc ; n++) 
         if(string(argv[n]) == "-y") {
             y = atoi(argv[n+1]);
-            if(y < 1 || y >= x){
+            if(y < 1 || y > x){
                 cerr << "Error: invalid y\n";
                 return -1;
             }
