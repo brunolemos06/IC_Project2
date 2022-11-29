@@ -93,7 +93,7 @@ class golomb_codec{
             this->codec_alg = golomb();
             this->order = 3;
             this->x = 2000;
-            this->y = 1250;
+            this->y = 1750;
             this->lossless=1;
             this->cut_n_bits=0;
         }

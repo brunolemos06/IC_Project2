@@ -49,7 +49,7 @@ int main(int argc, char** argv ){
             break;
         }
 
-    int y = 1500;
+    int y = 1750;
     for(int n = 1 ; n < argc ; n++) 
         if(string(argv[n]) == "-y") {
             y = atoi(argv[n+1]);
