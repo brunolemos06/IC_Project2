@@ -6,10 +6,10 @@ using namespace std;
 
 int main(int argc, char** argv ){
     if(argc < 4){
-        cerr << "Usage: ./golomb_codec_tests <fileIn.wav> <encoded.txt> <decoded.wav> [-lossy n_bits_to_cut[1,15] (def:lossless)]\n";
-        cerr << "                                                                     [-order [2,3] (def:3)]\n";
-        cerr << "                                   (update m every x samples) (X>0)  [-x (def:2000)]\n"; 
-        cerr << "                       (calculate medium of y samples) (x >= y > 0)  [-y def:1500)]\n";
+        cerr << "Usage: ./golomb_codec_tests <fileIn.wav> <encodedOut.txt> <decodedOut.wav> [-lossy n_bits_to_cut[1,15] (def:lossless)]\n";
+        cerr << "                                                                           [-order [2,3] (def:3)]\n";
+        cerr << "                                         (update m every x samples) (X>0)  [-x (def:2000)]\n"; 
+        cerr << "                             (calculate medium of y samples) (x >= y > 0)  [-y def:1750)]\n";
         return -1;
     }
 
@@ -64,7 +64,7 @@ int main(int argc, char** argv ){
     golomb_codec encode(order, x, y, lossless, n_bits_to_cut);
     cout << "Encoding file " << argv[1] << " to file " << argv[2] << endl;
     encode.encode_wav_file(argv[1], argv[2]);
-    cout << "\nDecoding file " << argv[2] << " to file " << argv[3] << endl;
     golomb_codec decode = golomb_codec();
+    cout << "\nCreating new codec to decode file " << argv[2] << " to file " << argv[3] << endl;
     decode.decode_to_wav(argv[2], argv[3]);
 }
