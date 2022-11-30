@@ -207,13 +207,12 @@ class image_codec{
             encoded += (codec_alg.encode_number(image.rows, 0) +  codec_alg.encode_number(image.cols, 0));
 
 
-
-            int med = 0;
-            med = arrayimage[0]+arrayimage[1]+arrayimage[2];
-            med = med/3;
             encoded += codec_alg.encode_number(arrayimage[0],0);
             encoded += codec_alg.encode_number(arrayimage[1],0);
             encoded += codec_alg.encode_number(arrayimage[2],0);
+            int med = 0;
+            med = arrayimage[0]+arrayimage[1]+arrayimage[2];
+            med = med/3;
             m = calc_m(med);
             codec_alg.change_m_encode(m);
 
@@ -321,6 +320,7 @@ class image_codec{
                             codec_alg.change_m_decode(m);
                         }else if(index == 2){
                             // calculate avg of first 3 samples
+                            med = 0;
                             med = (Lastvalues[0] + Lastvalues[1] + Lastvalues[2])/3;
                             m = calc_m(med);
                             codec_alg.change_m_decode(m);
