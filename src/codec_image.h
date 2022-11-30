@@ -302,7 +302,7 @@ class image_codec{
                             *tmp_val = ((*tmp_val - 1) / 2);
                         }
 
-                        if (j == 0 || i == 0){
+                        if (j == 0 || i == 0){ 
                             newimage.at<Vec3b>(i,j)[k] = *tmp_val;
                         }else{
                             a = newimage.at<Vec3b>(i,j-1)[k];
