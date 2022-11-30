@@ -13,11 +13,13 @@ using namespace std;
 
 int main(int argc, char** argv ){
 
-    image_codec codec(7);
     if ( argc != 3 ){
         printf("usage: wrong\n");
         return -1;
     }
+    //  check the size of the image
+    
+    image_codec codec(8,2500,2500);
+    // codec.decode_image_file(argv[1], argv[2]);
     codec.encode_image_file(argv[1], argv[2]);
-    return 0;
 }

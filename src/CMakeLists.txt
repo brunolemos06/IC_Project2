@@ -22,6 +22,15 @@ target_link_libraries(ex1 ${OpenCV_LIBS})
 add_executable(ex2 ex2.cpp)
 target_link_libraries(ex2 ${OpenCV_LIBS})
 
+
+#EXERCICE encoder_image
+add_executable(encoder_image encoder_image.cpp)
+target_link_libraries(encoder_image ${OpenCV_LIBS})
+
+#EXERCICE decoder_image
+add_executable(decoder_image decoder_image.cpp)
+target_link_libraries(decoder_image ${OpenCV_LIBS})
+
 #TESTS OF SECGOLOMB CLASS
 add_executable(secgolomb secgolomb.cpp)
 target_link_libraries(secgolomb ${OpenCV_LIBS})
