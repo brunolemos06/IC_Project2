@@ -240,7 +240,7 @@ class golomb_codec{
                     for(uint32_t j=i - y; j<i; j++){ //calculate average of last y samples
                         med += mapped_samples[j];
                     }
-                    codec_alg.change_m_encode(calc_m(med/x));
+                    codec_alg.change_m_encode(calc_m(med/y));
                 }
 
             }
@@ -366,7 +366,7 @@ class golomb_codec{
                     for(uint32_t j=i - y; j<i; j++){
                         med += mapped_samples[j];
                     }
-                    codec_alg.change_m_decode(calc_m(med/x));
+                    codec_alg.change_m_decode(calc_m(med/y));
                 }
 
                 //unmap decoded value
