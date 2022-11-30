@@ -13,16 +13,36 @@ using namespace std;
 
 int main(int argc, char** argv ){
 
-    if ( argc != 6 ){
-        printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8]\n");
-        return -1;
+    if ( argc == 3 ){
+        try{
+            image_codec codec(8,2500,2500);
+            codec.encode_image_file(argv[1], argv[2]);
+        }
+        catch (Exception e){
+            printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8] <n> <y>\n");
+        }
+        return 0;
+    }
+    if ( argc == 4 ){
+        try{
+            image_codec codec(atoi(argv[3]),2500,2500);
+            codec.encode_image_file(argv[1], argv[2]);
+        }
+        catch (Exception e){
+            printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8] <n> <y>\n");
+        }
+        return 0;
     }
     //  check the size of the image
+    if ( argc != 6 ){
+        printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8] <n> <y>\n");
+        return -1;
+    }
     try{
         image_codec codec(atoi(argv[3]),atoi(argv[4]),atoi(argv[5]));
         codec.encode_image_file(argv[1], argv[2]);
     }
     catch (Exception e){
-        printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8]\n");
+        printf("usage: encoder_image <src.ppm> <out.txt> <order>[1..8] <n> <y>\n");
     }
 }
