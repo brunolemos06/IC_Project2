@@ -111,8 +111,9 @@ class image_codec{
                 return a;
             }else{
                 //error
-                cout << "ERROR: Wrong mode" << endl;
-                return 0;
+                cout << "ERROR: Wrong order" << endl;
+                // system exit
+                exit(0);
             }
         }
 
@@ -201,15 +202,22 @@ class image_codec{
             // cout all saveindexOver
         
 
-            codec_alg.change_m_encode(400);
+            codec_alg.change_m_encode(4);
             m = codec_alg.get_m_encode();
             encoded += (codec_alg.encode_number(image.rows, 0) +  codec_alg.encode_number(image.cols, 0));
 
 
 
             int med = 0;
+            med = arrayimage[0]+arrayimage[1]+arrayimage[2];
+            med = med/3;
             encoded += codec_alg.encode_number(arrayimage[0],0);
-            for (int i = 1; i < size; i++){ 
+            encoded += codec_alg.encode_number(arrayimage[1],0);
+            encoded += codec_alg.encode_number(arrayimage[2],0);
+            m = calc_m(med);
+            codec_alg.change_m_encode(m);
+
+            for (int i = 3; i < size; i++){ 
                 // cout << "m" <<  m << ":" << arrayimage[i] << endl;
                 encoded += codec_alg.encode_number(arrayimage[i],0);
                 
@@ -231,12 +239,12 @@ class image_codec{
             write_bin_to_file(fileOut, encoded);
             time_req = clock() - time_req;
             // calculate th avgm    
-            cout << "Image to Encode   : " << fileIn << endl;
-            cout << "Encoded file      : " << fileOut << endl;
-            cout << "Colors written    : " << size << endl;
+            // cout << "Image to Encode   : " << fileIn << endl;
+            // cout << "Encoded file      : " << fileOut << endl;
+            // cout << "Colors written    : " << size << endl;
             cout << "Compression ratio : " << (float)encoded.length()/(image.rows*image.cols*3*8) << endl;
 
-            cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
+            // cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
             return 0;
         }
 
@@ -265,7 +273,7 @@ class image_codec{
 
             vector<int> Lastvalues;
             
-            codec_alg.change_m_decode(400);
+            codec_alg.change_m_decode(4);
             m = codec_alg.get_m_decode();
             int med;
 
@@ -304,12 +312,17 @@ class image_codec{
                             newimage.at<Vec3b>(i,j)[k] = *tmp_val + calculate_prediction(order, a, b, c);
                         }
                         // cout <<"s" << endl;
-                        if(index % x == 0 && index != 0){ //every x samples  
+                        if(index % x == 0 && index > 2){ //every x samples  
                             med = 0;
                             for(uint32_t h=index - y; h<index; h++){ //calculate average of last y samples
                                 med += Lastvalues[h];
                             }
                             m = calc_m(med/x);
+                            codec_alg.change_m_decode(m);
+                        }else if(index == 2){
+                            // calculate avg of first 3 samples
+                            med = (Lastvalues[0] + Lastvalues[1] + Lastvalues[2])/3;
+                            m = calc_m(med);
                             codec_alg.change_m_decode(m);
                         }
                         // cout << "i" << ":"<< index <<"\nm" << m << endl;
