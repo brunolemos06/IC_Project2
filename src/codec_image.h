@@ -13,7 +13,6 @@
 #include <iostream>
 
 #include "golomb.h"
-#include "circularBuffer.h"
 
 using namespace std;
 using namespace cv;
@@ -27,11 +26,11 @@ int format=0, samplerate=0;
 class image_codec{
     private:
         golomb codec_alg;
-        circular_buffer *cb_encode;
-        circular_buffer *cb_decode;
-        char buffer;
-        int count, num_channels, order;
+        char buffer = 0;
+        int count=0, num_channels=0;
+        int x, y, order;
         string encoded;
+    
 
         //  Function to write the encoded data to a file
         int write_bin_to_file(const char* fileOut, string encoded){
@@ -83,9 +82,14 @@ class image_codec{
         }
 
         int calculate_prediction(int mode, int a, int b, int c){
-            if(mode == 1){
-                // a
-                return a;
+            if(mode == 8){
+                if (c >= max(a,b)){
+                    return min(a,b);
+                }else if (c <= min(a,b)){
+                    return max(a,b);
+                }else{
+                    return a+b-c;
+                }
             }else if(mode==2){
                 //b
                 return b;
@@ -96,109 +100,231 @@ class image_codec{
                 //a+b-c
                 return a+b-c;
             }else if(mode==5){
-                //a+(b-c)/2
                 return a+(b-c)/2;
             }else if(mode==6){
                 //b+(a-c)/2
                 return b+(a-c)/2;
             }else if(mode==7){
                 return (a+b)/2;
+            }else if(mode==1){
+                //a
+                return a;
             }else{
                 //error
+                cout << "ERROR: Wrong mode" << endl;
                 return 0;
             }
         }
 
         uint32_t calc_m(double avg){
             double alfa = avg / (avg + 1);
-            return ceil(-1/log2(alfa));
+            double res = ceil(-1/log2(alfa));
+            if (res == 0){
+                return 1;
+            }
+            return res;
         }
 
     public:
-        image_codec(int n_order) : codec_alg(){ buffer=0; count=0; num_channels=3;order=n_order; cb_encode = cb_init(50); cb_decode = cb_init(50);};
-        image_codec() : codec_alg() {buffer=0; count=0; order=3; num_channels=3;cb_encode = cb_init(50); cb_decode = cb_init(50);};
-        
-        
+        image_codec(int n_order, int x_in, int y_in): codec_alg() { order = n_order; x = x_in; y = y_in; };        
 
         int encode_image_file(const char* fileIn, const char* fileOut){
+            // init locktable
+
+            int locktable[256];
+            for(int i = 0; i < 256; i++){
+                locktable[i] = i*2+1;
+            } 
             
             clock_t time_req;                           //for time measurement
             time_req = clock();                         //start time measurement
             encoded = "";
-            
             //  declaare char array to store fileIn
             Mat image;
+            // size of file fileIn
+
             image = imread( fileIn , 1 );
+                        
             if (!image.data){
                 printf("No image data");
                 return -1;
             }
-
             //  Get the image size
             int num_channels = 3;
+            unsigned char a[3],b[3],c[3];
+            int pred[3];
+            Vec<int, 3> aux_finalvalue;
+            Vec<unsigned short, 3> finalvalue;
+            int soma;
+            int m;
+            int avg;
 
-            int real0;
-            int real1;
-            int real2;
-            int a1, b1, c1, a2, b2, c2, a3, b3, c3;
-            int pred1, pred2, pred3;
-            int value1, value2, value3;
-            codec_alg.change_m_decode(4);
-            // for first line and first column
-            for(int i=0; i<image.cols; i++){
-                int value = image.at<Vec3b>(0,i)[0];
-                encoded += codec_alg.encode_number(value, 0) + '\n';
-                value = image.at<Vec3b>(0,i)[1];
-                encoded += codec_alg.encode_number(value, 0) + '\n';
-                value = image.at<Vec3b>(0,i)[2];
-                encoded += codec_alg.encode_number(value, 0) + '\n';
-            }
+            // array with size of image
+            int size = image.rows*image.cols*3;
+            // cout << size << endl;
+            // declare array
+            int *arrayimage = new int[size];
             
-            int soma =0;
-            for(int i = 1; i < 2; i++){
+            vector<int> saveindexOver;
+            // for first line and first column
+            int index = 0;
+            for(int i = 0; i < image.rows; i++){
                 for(int j = 0; j < image.cols; j++){
-                    soma += image.at<Vec3b>(i,j)[0] + image.at<Vec3b>(i,j)[1] + image.at<Vec3b>(i,j)[2];
-                    if (j == 0){
-                        for(int k=0; k<num_channels; k++){
-                            encoded += codec_alg.encode_number(image.at<Vec3b>(i,j)[k], 0);
+                    for (int k = 0; k < num_channels; k++){
+                        if (j == 0 || i == 0){
+                            arrayimage[index++] = locktable[image.at<Vec3b>(i,j)[k]];
+                            soma += (image.at<Vec3b>(i,j)[k]);
+                        }else{
+                            a[k] = image.at<Vec3b>(i,j-1)[k];
+                            b[k] = image.at<Vec3b>(i-1,j)[k];
+                            c[k] = image.at<Vec3b>(i-1,j-1)[k];
+
+                            pred[k] = calculate_prediction(order, a[k], b[k], c[k]);
+
+                            aux_finalvalue[k] = image.at<Vec3b>(i,j)[k] - pred[k];
+
+
+                            if(aux_finalvalue[k] < 0){
+                                finalvalue[k] = (aux_finalvalue[k] * -2); 
+                            } else {
+                                finalvalue[k] = locktable[aux_finalvalue[k]]; //i * 2 + 1
+                            }
+
+                            arrayimage[index++] = (finalvalue[k]);
+
+                            soma += (finalvalue[k]);
                         }
-                    }else{
-                        real0 = image.at<Vec3b>(i,j)[0];
-                        real1 = image.at<Vec3b>(i,j)[1];
-                        real2 = image.at<Vec3b>(i,j)[2];
-
-                        a1 = image.at<Vec3b>(i,j-1)[0];
-                        b1 = image.at<Vec3b>(i-1,j)[0];
-                        c1 = image.at<Vec3b>(i-1,j-1)[0];
-                        a2 = image.at<Vec3b>(i,j-1)[1];
-                        b2 = image.at<Vec3b>(i-1,j)[1];
-                        c2 = image.at<Vec3b>(i-1,j-1)[1];
-                        a3 = image.at<Vec3b>(i,j-1)[2];
-                        b3 = image.at<Vec3b>(i-1,j)[2];
-                        c3 = image.at<Vec3b>(i-1,j-1)[2];
-
-
-                        pred1 = (a1+b1)/2;
-                        value1 = real0 - pred1;
-                        pred2 = (a2+b2)/2;
-                        value2 = real1 - pred2;
-                        pred3 = (a3+b3)/2;
-                        value3 = real2 - pred3;
-
-                        encoded += codec_alg.encode_number(value1,0);
-                        encoded += codec_alg.encode_number(value2,0);
-                        encoded += codec_alg.encode_number(value3,0);
                     }
                 }
-                // codec_alg.change_m_decode(calc_m(soma/(image.cols*3)));
+                // cout << endl;
+            }
+            // cout all saveindexOver
+        
+
+            codec_alg.change_m_encode(400);
+            m = codec_alg.get_m_encode();
+            encoded += (codec_alg.encode_number(image.rows, 0) +  codec_alg.encode_number(image.cols, 0));
+
+
+
+            int med = 0;
+            encoded += codec_alg.encode_number(arrayimage[0],0);
+            for (int i = 1; i < size; i++){ 
+                // cout << "m" <<  m << ":" << arrayimage[i] << endl;
+                encoded += codec_alg.encode_number(arrayimage[i],0);
+                
+                if(i % x == 0){ //every x samples  
+                    med = 0;
+                    // cout << "i: " << i << endl;
+                    for(uint32_t j=i - y; j<i; j++){ //calculate average of last y samples
+                        med += arrayimage[j];
+                    }
+                    m = calc_m(med/x);
+                    codec_alg.change_m_encode(m);
+                }
+                //  40 -> 197
+                // 128 -> 0
+                // 128 -> 363
+                // ...
             }
 
             write_bin_to_file(fileOut, encoded);
             time_req = clock() - time_req;
-            cout << "Execution time: " << (float)time_req/CLOCKS_PER_SEC << " seconds\n" << endl;
+            // calculate th avgm    
+            cout << "Image to Encode   : " << fileIn << endl;
+            cout << "Encoded file      : " << fileOut << endl;
+            cout << "Colors written    : " << size << endl;
+            cout << "Compression ratio : " << (float)encoded.length()/(image.rows*image.cols*3*8) << endl;
+
+            cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
             return 0;
         }
 
+    int decode_image_file(const char* fileIn, const char* fileOut){
+            clock_t time_req;
+            time_req = clock();
+
+            //read encoded file
+            string encoded = read_bin_from_file(fileIn);
+            //pointer to encoded string
+            char *p = &encoded[0];
+            
+
+            //print encoded size in bytes
+            cout << "Encoded size in bytes: " << (double)encoded.size()/8 << endl;
+            cout << "Encoded size in Mbytes: " << (double)encoded.size()/8/1024/1024 << endl;
+
+            long * tmp_val = (long*)malloc(sizeof(long));    //pointer to store decoded number
+            
+
+            uint32_t i=0;
+            unsigned char a,b,c;
+            int index = 0;
+            long soma=0;
+            int m;
+
+            vector<int> Lastvalues;
+            
+            codec_alg.change_m_decode(400);
+            m = codec_alg.get_m_decode();
+            int med;
+
+            p = codec_alg.decode_string(p, tmp_val, 0);
+            int rows = *tmp_val;
+            p = codec_alg.decode_string(p, tmp_val, 0);
+            int cols = *tmp_val;
+            // cout << "rows: " << rows << " cols: " << cols << endl;
+
+
+
+            int saveIndex_position = 0;
+
+            Mat newimage(rows, cols, CV_8UC3, Scalar(0,0,0));
+
+            for(int i = 0; i < rows; i++){
+                for(int j = 0; j < cols; j++){
+                    for (int k = 0; k < 3; k++){
+                        p = codec_alg.decode_string(p, tmp_val, 0);                    
+                        //  store tmo_val in array
+                        Lastvalues.push_back(*tmp_val);
+                        // cout << "tmp_val: " << *tmp_val << endl;
+
+                        if(*tmp_val % 2 == 0){
+                            *tmp_val = ( (*tmp_val) / (-2));
+                        } else {
+                            *tmp_val = ((*tmp_val - 1) / 2);
+                        }
+
+                        if (j == 0 || i == 0){
+                            newimage.at<Vec3b>(i,j)[k] = *tmp_val;
+                        }else{
+                            a = newimage.at<Vec3b>(i,j-1)[k];
+                            b = newimage.at<Vec3b>(i-1,j)[k];
+                            c = newimage.at<Vec3b>(i-1,j-1)[k];
+                            newimage.at<Vec3b>(i,j)[k] = *tmp_val + calculate_prediction(order, a, b, c);
+                        }
+                        // cout <<"s" << endl;
+                        if(index % x == 0 && index != 0){ //every x samples  
+                            med = 0;
+                            for(uint32_t h=index - y; h<index; h++){ //calculate average of last y samples
+                                med += Lastvalues[h];
+                            }
+                            m = calc_m(med/x);
+                            codec_alg.change_m_decode(m);
+                        }
+                        // cout << "i" << ":"<< index <<"\nm" << m << endl;
+                        index++;
+                    }
+                    // return 0;
+                }
+            }
+
+            imwrite(fileOut, newimage);
+            time_req = clock() - time_req;
+            cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
+            return 0;
+
+        }
 };
 
 #endif
