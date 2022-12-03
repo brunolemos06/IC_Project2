@@ -60,10 +60,11 @@ int main(int argc, char** argv ){
             break;
         }
 
-    //create the codec
+    //create codec to encode
     golomb_codec encode(order, x, y, lossless, n_bits_to_cut);
-    cout << "Encoding file " << argv[1] << " to file " << argv[2] << endl;
+    cout << "Creating new codec to encoding file " << argv[1] << " to file " << argv[2] << endl;
     encode.encode_wav_file(argv[1], argv[2]);
+    //create codec to decode
     golomb_codec decode = golomb_codec();
     cout << "\nCreating new codec to decode file " << argv[2] << " to file " << argv[3] << endl;
     decode.decode_to_wav(argv[2], argv[3]);
