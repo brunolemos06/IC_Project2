@@ -7,12 +7,13 @@ using namespace std; // std dont need
 using namespace cv; // cv dont need
 
 void print(){
-    cerr << "../bin/ex2 [ -a | -b ] <ImageIn> <ImageOut>" << endl;
+    cerr << "../bin/ex2 [ -a ] <ImageIn> <ImageOut>" << endl;
+    cerr << "../bin/ex2 [ -b ] <ImageIn> <ImageOut> [ -h | -v ]" << endl;
     cerr << "../bin/ex2 [ -c ] <ImageIn> <ImageOut> <degree>" << endl;
     cerr << "../bin/ex2 [ -d ] <ImageIn> <ImageOut> <<inc/decr>>" << endl;
 }
 
-int ex2_b(string InputFileName, string OutputFileName){
+int ex2_b(string InputFileName, string OutputFileName,string option){
     Mat image;
     image = imread( InputFileName, 1 );
 
@@ -32,24 +33,38 @@ int ex2_b(string InputFileName, string OutputFileName){
     }
 
     Mat image3(image.rows, image.cols, CV_8UC3, Scalar(0,0,0));
-
-    for(int i = 0; i < image.rows; i++)
-    {
-        for(int j = 0; j < image.cols; j++)
+    if (option == "-h"){
+        for(int i = 0; i < image.rows; i++)
         {
-            //mirror the image horizontally
-            image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(i,image.cols-j-1)[0];
-            image3.at<Vec3b>(i,j)[1] = image.at<Vec3b>(i,image.cols-j-1)[1];
-            image3.at<Vec3b>(i,j)[2] = image.at<Vec3b>(i,image.cols-j-1)[2];
+            for(int j = 0; j < image.cols; j++)
+            {
+                //mirror the image horizontally
+                image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(i,image.cols-j-1)[0];
+                image3.at<Vec3b>(i,j)[1] = image.at<Vec3b>(i,image.cols-j-1)[1];
+                image3.at<Vec3b>(i,j)[2] = image.at<Vec3b>(i,image.cols-j-1)[2];
+            }
         }
+    }else if (option == "-v"){
+        for(int i = 0; i < image.rows; i++)
+        {
+            for(int j = 0; j < image.cols; j++)
+            {
+                //mirror the image vertically
+                image3.at<Vec3b>(i,j)[0] = image.at<Vec3b>(image.rows-i-1,j)[0];
+                image3.at<Vec3b>(i,j)[1] = image.at<Vec3b>(image.rows-i-1,j)[1];
+                image3.at<Vec3b>(i,j)[2] = image.at<Vec3b>(image.rows-i-1,j)[2];
+            }
+        }
+    }
+    else{
+        print();
+        return -1;
     }
 
     //write the image to the second file
     imwrite(OutputFileName, image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
 
-    waitKey(0);
+    
 
     return 0;
 }
@@ -86,10 +101,6 @@ int ex2_a(string InputFileName, string OutputFileName){
     }
     //write the image to the second file
     imwrite(OutputFileName, image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
-
-    waitKey(0);
 
     return 0;
 
@@ -157,10 +168,6 @@ int ex2_c(string InputFile, string OutputFileName,int degrees){
 
     //write image into a new file with the name of the second file passed in
     imwrite(OutputFileName, image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
-
-    waitKey(0);
 
     return 0;
 }
@@ -213,11 +220,7 @@ int ex2_d(string InputFile, string OutputFileName, const char* type){
 
     //write the image to the second file
     imwrite(OutputFileName, image3);
-    namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image3);
-
-    waitKey(0);
-
+ 
     return 0;
 }
 
@@ -230,10 +233,10 @@ int main(int argc, char** argv){
         print();
         return 0;
     }
-    else if(argc != 4 && (strcmp(argv[1], "-a") == 0 || strcmp(argv[1], "-b") == 0)) {
+    else if(argc != 4 && (strcmp(argv[1], "-a") == 0)) {
         print();
         return 0;
-    }else if (argc !=5 && (strcmp(argv[1], "-c") == 0 || strcmp(argv[1], "-d") == 0)){
+    }else if (argc !=5 && (strcmp(argv[1], "-c") == 0 || strcmp(argv[1], "-d") == 0 || strcmp(argv[1], "-b") == 0)){
         print();
         return 0;
     }
@@ -249,7 +252,7 @@ int main(int argc, char** argv){
     } // -b EX2_B
     else if (strcmp(argv[1], "-b") == 0){
         cout << "Processing ex2 b)\nInputFile: " + InputFileName + "\nOutputFile: " + OutputFileName << endl;
-        ex2_b(InputFileName,OutputFileName); //"../Images/airplane.ppm"
+        ex2_b(InputFileName,OutputFileName,argv[4]); //"../Images/airplane.ppm"
         cout << "Done !! "<< endl;
     } // -c EX2_C
     else if (strcmp(argv[1], "-c") == 0){
