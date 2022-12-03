@@ -55,7 +55,7 @@ int main(int argc, char** argv ){
         for(int n = 1 ; n < argc ; n++) 
             if(string(argv[n]) == "-y") {
                 y = atoi(argv[n+1]);
-                if(y < 1 || y > x){
+                if(y < 1 || y >= x){
                     cerr << "Error: invalid y\n";
                     return -1;
                 }
