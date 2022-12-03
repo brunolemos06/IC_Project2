@@ -42,7 +42,7 @@ int main(int argc, char** argv ){
         cout << "Writing to file..." << endl;
         //print the encoded values
         for(int i = 0; i < quocients.size(); i++){
-            cout << quocients[i] << " ";
+            cout << quocients[i]<<endl;
         }
 
         //write the encoded values to the file
@@ -52,7 +52,7 @@ int main(int argc, char** argv ){
             return -1;
         }
         for(int i = 0; i < quocients.size(); i++){
-            fprintf(fp2, "%s ", quocients[i].c_str());
+            fprintf(fp2, "%s", quocients[i].c_str());
         }
         fclose(fp2);
         cout << endl;
@@ -94,18 +94,11 @@ int main(int argc, char** argv ){
         }
         //write the values[i] to the file
         for(int i = 0; i < values.size(); i++){
-            fprintf(fp2, "%s ", values[i].c_str());
+            fprintf(fp2, "%s", values[i].c_str());
         }
 
         fclose(fp2);
         cout << endl;
-
-
-
-
-        
-
-
     }
     
     time(&end);
