@@ -156,7 +156,6 @@ class image_codec{
             int pred[3];
             Vec<int, 3> aux_finalvalue;
             Vec<unsigned short, 3> finalvalue;
-            int soma;
             int m;
             int avg;
 
@@ -174,7 +173,6 @@ class image_codec{
                     for (int k = 0; k < num_channels; k++){
                         if (j == 0 || i == 0){
                             arrayimage[index++] = locktable[image.at<Vec3b>(i,j)[k]];
-                            soma += (image.at<Vec3b>(i,j)[k]);
                         }else{
                             a[k] = image.at<Vec3b>(i,j-1)[k];
                             b[k] = image.at<Vec3b>(i-1,j)[k];
@@ -192,8 +190,6 @@ class image_codec{
                             }
 
                             arrayimage[index++] = (finalvalue[k]);
-
-                            soma += (finalvalue[k]);
                         }
                     }
                 }
@@ -240,10 +236,9 @@ class image_codec{
             // calculate th avgm    
             // cout << "Image to Encode   : " << fileIn << endl;
             // cout << "Encoded file      : " << fileOut << endl;
-            // cout << "Colors written    : " << size << endl;
+            cout << "Colors written    : " << size << endl;
             cout << "Compression ratio : " << (float)encoded.length()/(image.rows*image.cols*3*8) << endl;
-
-            // cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
+            cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
             return 0;
         }
 
