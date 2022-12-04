@@ -236,9 +236,9 @@ class image_codec{
             // calculate th avgm    
             // cout << "Image to Encode   : " << fileIn << endl;
             // cout << "Encoded file      : " << fileOut << endl;
-            cout << "Colors written    : " << size << endl;
-            cout << "Compression ratio : " << (float)encoded.length()/(image.rows*image.cols*3*8) << endl;
-            cout << "Execution time    : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
+            cout << "Colors written     : " << size << endl;
+            cout << "Taxa de Compressão : " << (float)encoded.length()/(image.rows*image.cols*3*8) << endl;
+            cout << "Execution time     : " << (float)time_req/CLOCKS_PER_SEC << " seconds" << endl;
             return 0;
         }
 
