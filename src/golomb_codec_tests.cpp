@@ -8,8 +8,8 @@ int main(int argc, char** argv ){
     if(argc < 4){
         cerr << "Usage: ./golomb_codec_tests  encode <fileIn.wav> <encodedOut.txt> [-lossy n_bits_to_cut[1,15] (def:lossless)]\n";
         cerr << "                                                                  [-order [2,3] (def:3)]\n";
-        cerr << "                                (update m every x samples) (X>0)  [-x (def:2000)]\n"; 
-        cerr << "                    (calculate medium of y samples) (x >= y > 0)  [-y (def:1750)]\n";
+        cerr << "                                (update m every x samples) (X>0)  [-x (def:200)]\n"; 
+        cerr << "                    (calculate medium of y samples) (x >= y > 0)  [-y (def:150)]\n";
         cerr << "Usage: ./golomb_codec_tests  decode <encodedIn.txt> <decodedOut.wav>\n";
         return -1;
     }
@@ -40,7 +40,7 @@ int main(int argc, char** argv ){
                 break;
             }
 
-        int x = 2000;
+        int x = 200;
         for(int n = 1 ; n < argc ; n++) 
             if(string(argv[n]) == "-x") {
                 x = atoi(argv[n+1]);
@@ -51,7 +51,7 @@ int main(int argc, char** argv ){
                 break;
             }
 
-        int y = 1750;
+        int y = 150;
         for(int n = 1 ; n < argc ; n++) 
             if(string(argv[n]) == "-y") {
                 y = atoi(argv[n+1]);
